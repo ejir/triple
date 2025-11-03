@@ -81,3 +81,45 @@ char *render_escape_html(const char *str) {
     
     return escaped;
 }
+
+char *render_escape_js(const char *str) {
+    if (!str) {
+        return NULL;
+    }
+    
+    size_t len = strlen(str);
+    char *escaped = malloc(len * 6 + 1);
+    if (!escaped) {
+        return NULL;
+    }
+    
+    size_t j = 0;
+    for (size_t i = 0; i < len; i++) {
+        switch (str[i]) {
+            case '\\':
+                escaped[j++] = '\\'; escaped[j++] = '\\';
+                break;
+            case '\'':
+                escaped[j++] = '\\'; escaped[j++] = '\'';
+                break;
+            case '"':
+                escaped[j++] = '\\'; escaped[j++] = '"';
+                break;
+            case '\n':
+                escaped[j++] = '\\'; escaped[j++] = 'n';
+                break;
+            case '\r':
+                escaped[j++] = '\\'; escaped[j++] = 'r';
+                break;
+            case '\t':
+                escaped[j++] = '\\'; escaped[j++] = 't';
+                break;
+            default:
+                escaped[j++] = str[i];
+                break;
+        }
+    }
+    escaped[j] = '\0';
+    
+    return escaped;
+}
