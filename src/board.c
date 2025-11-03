@@ -1016,9 +1016,15 @@ http_response_t *thread_view_handler(http_request_t *req) {
 }
 
 http_response_t *thread_create_handler(http_request_t *req) {
+    language_t lang = i18n_get_language(req);
+    
     if (!req->body) {
-        const char *html = "<html><body><h1>Error: No form data</h1></body></html>";
-        return http_response_create(400, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: %s</h1></body></html>",
+            i18n_get(lang, "error"),
+            i18n_get(lang, "no_form_data"));
+        return http_response_create(400, "text/html", error_html, strlen(error_html));
     }
     
     int64_t board_id = 1;
@@ -1029,8 +1035,12 @@ http_response_t *thread_create_handler(http_request_t *req) {
     
     char *body_copy = strdup(req->body);
     if (!body_copy) {
-        const char *html = "<html><body><h1>Error: Out of memory</h1></body></html>";
-        return http_response_create(500, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: %s</h1></body></html>",
+            i18n_get(lang, "error"),
+            i18n_get(lang, "out_of_memory"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
     char *token = strtok(body_copy, "&");
@@ -1062,8 +1072,11 @@ http_response_t *thread_create_handler(http_request_t *req) {
         "INSERT INTO threads (board_id, subject) VALUES (?, ?)"
     );
     if (!stmt) {
-        const char *html = "<html><body><h1>Error: Failed to create thread</h1></body></html>";
-        return http_response_create(500, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: Failed to create thread</h1></body></html>",
+            i18n_get(lang, "error"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
     sqlite3_bind_int64(stmt, 1, board_id);
@@ -1074,8 +1087,11 @@ http_response_t *thread_create_handler(http_request_t *req) {
     db_finalize(stmt);
     
     if (rc != SQLITE_DONE) {
-        const char *html = "<html><body><h1>Error: Failed to create thread</h1></body></html>";
-        return http_response_create(500, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: Failed to create thread</h1></body></html>",
+            i18n_get(lang, "error"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
     sqlite3_stmt *post_stmt = db_prepare(
@@ -1090,19 +1106,48 @@ http_response_t *thread_create_handler(http_request_t *req) {
         db_finalize(post_stmt);
     }
     
-    char *html = malloc(512);
+    char *html = malloc(1024);
     if (!html) {
-        const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
-        return http_response_create(500, "text/html", err, strlen(err));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: %s</h1></body></html>",
+            i18n_get(lang, "error"),
+            i18n_get(lang, "out_of_memory"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
-    int len = snprintf(html, 512,
-        "<html><body><h1>Thread Created!</h1>"
-        "<p>Your thread has been created.</p>"
-        "<a href=\"/thread?id=%lld\">View Thread</a> | "
-        "<a href=\"/board?id=%lld\">Back to Board</a></body></html>",
+    int len = snprintf(html, 1024,
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        "<meta charset=\"UTF-8\">\n"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+        "<title>%s</title>\n"
+        "<style>\n"
+        "body{font-family:'Roboto','Segoe UI',Arial,sans-serif,'Microsoft YaHei','SimHei';background:#fafafa;margin:0;padding:20px;text-align:center;}\n"
+        ".container{max-width:600px;margin:50px auto;background:#fff;padding:32px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,0.1);}\n"
+        "h1{color:#4caf50;margin-bottom:16px;font-size:2rem;}\n"
+        "p{color:rgba(0,0,0,0.87);margin:20px 0;font-size:1.1rem;}\n"
+        ".btn{background:#1976d2;color:#fff;padding:12px 24px;border-radius:4px;text-decoration:none;display:inline-block;margin:8px;transition:background 0.2s;}\n"
+        ".btn:hover{background:#1565c0;}\n"
+        "</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "<div class=\"container\">\n"
+        "<h1>✅ %s</h1>\n"
+        "<p>%s</p>\n"
+        "<a href=\"/thread?id=%lld\" class=\"btn\">%s</a>\n"
+        "<a href=\"/board?id=%lld\" class=\"btn\">%s</a>\n"
+        "</div>\n"
+        "</body>\n"
+        "</html>",
+        i18n_get(lang, "thread_created"),
+        i18n_get(lang, "thread_created"),
+        i18n_get(lang, "thread_created_msg"),
         (long long)thread_id,
-        (long long)board_id);
+        i18n_get(lang, "view_thread"),
+        (long long)board_id,
+        i18n_get(lang, "back_to_board"));
     
     http_response_t *response = http_response_create(200, "text/html", html, len);
     free(html);
@@ -1110,9 +1155,15 @@ http_response_t *thread_create_handler(http_request_t *req) {
 }
 
 http_response_t *post_create_handler(http_request_t *req) {
+    language_t lang = i18n_get_language(req);
+    
     if (!req->body) {
-        const char *html = "<html><body><h1>Error: No form data</h1></body></html>";
-        return http_response_create(400, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: %s</h1></body></html>",
+            i18n_get(lang, "error"),
+            i18n_get(lang, "no_form_data"));
+        return http_response_create(400, "text/html", error_html, strlen(error_html));
     }
     
     int64_t thread_id = 0;
@@ -1123,8 +1174,12 @@ http_response_t *post_create_handler(http_request_t *req) {
     
     char *body_copy = strdup(req->body);
     if (!body_copy) {
-        const char *html = "<html><body><h1>Error: Out of memory</h1></body></html>";
-        return http_response_create(500, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: %s</h1></body></html>",
+            i18n_get(lang, "error"),
+            i18n_get(lang, "out_of_memory"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
     char *token = strtok(body_copy, "&");
@@ -1153,16 +1208,22 @@ http_response_t *post_create_handler(http_request_t *req) {
     free(body_copy);
     
     if (thread_id == 0) {
-        const char *html = "<html><body><h1>Error: Invalid thread ID</h1></body></html>";
-        return http_response_create(400, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: Invalid thread ID</h1></body></html>",
+            i18n_get(lang, "error"));
+        return http_response_create(400, "text/html", error_html, strlen(error_html));
     }
     
     sqlite3_stmt *stmt = db_prepare(
         "INSERT INTO posts (thread_id, author, content, reply_to) VALUES (?, ?, ?, ?)"
     );
     if (!stmt) {
-        const char *html = "<html><body><h1>Error: Failed to create post</h1></body></html>";
-        return http_response_create(500, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: Failed to create post</h1></body></html>",
+            i18n_get(lang, "error"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
     sqlite3_bind_int64(stmt, 1, thread_id);
@@ -1178,21 +1239,52 @@ http_response_t *post_create_handler(http_request_t *req) {
     db_finalize(stmt);
     
     if (rc != SQLITE_DONE) {
-        const char *html = "<html><body><h1>Error: Failed to create post</h1></body></html>";
-        return http_response_create(500, "text/html", html, strlen(html));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: Failed to create post</h1></body></html>",
+            i18n_get(lang, "error"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
-    char *html = malloc(512);
+    char *html = malloc(1024);
     if (!html) {
-        const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
-        return http_response_create(500, "text/html", err, strlen(err));
+        char error_html[256];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s: %s</h1></body></html>",
+            i18n_get(lang, "error"),
+            i18n_get(lang, "out_of_memory"));
+        return http_response_create(500, "text/html", error_html, strlen(error_html));
     }
     
-    int len = snprintf(html, 512,
-        "<html><body><h1>Post Created!</h1>"
-        "<p>Your reply has been posted.</p>"
-        "<a href=\"/thread?id=%lld\">Back to Thread</a></body></html>",
-        (long long)thread_id);
+    int len = snprintf(html, 1024,
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        "<meta charset=\"UTF-8\">\n"
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+        "<title>%s</title>\n"
+        "<style>\n"
+        "body{font-family:'Roboto','Segoe UI',Arial,sans-serif,'Microsoft YaHei','SimHei';background:#fafafa;margin:0;padding:20px;text-align:center;}\n"
+        ".container{max-width:600px;margin:50px auto;background:#fff;padding:32px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,0.1);}\n"
+        "h1{color:#4caf50;margin-bottom:16px;font-size:2rem;}\n"
+        "p{color:rgba(0,0,0,0.87);margin:20px 0;font-size:1.1rem;}\n"
+        ".btn{background:#1976d2;color:#fff;padding:12px 24px;border-radius:4px;text-decoration:none;display:inline-block;margin-top:16px;transition:background 0.2s;}\n"
+        ".btn:hover{background:#1565c0;}\n"
+        "</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "<div class=\"container\">\n"
+        "<h1>✅ %s</h1>\n"
+        "<p>%s</p>\n"
+        "<a href=\"/thread?id=%lld\" class=\"btn\">%s</a>\n"
+        "</div>\n"
+        "</body>\n"
+        "</html>",
+        i18n_get(lang, "post_created"),
+        i18n_get(lang, "post_created"),
+        i18n_get(lang, "post_created_msg"),
+        (long long)thread_id,
+        i18n_get(lang, "back_to_thread"));
     
     http_response_t *response = http_response_create(200, "text/html", html, len);
     free(html);
