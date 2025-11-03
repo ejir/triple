@@ -31,6 +31,7 @@ void board_init(void);
 void board_register_routes(void);
 
 http_response_t *board_list_handler(http_request_t *req);
+http_response_t *board_create_handler(http_request_t *req);
 http_response_t *board_view_handler(http_request_t *req);
 http_response_t *thread_view_handler(http_request_t *req);
 http_response_t *thread_create_handler(http_request_t *req);
