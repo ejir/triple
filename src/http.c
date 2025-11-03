@@ -122,7 +122,7 @@ static int parse_request_line(const char *line, http_request_t *req) {
 }
 
 static void send_response(int client_fd, http_response_t *response) {
-    char header[1024];
+    char header[2048];
     int header_len;
     
     const char *status_msg = get_status_message(response->status_code);
@@ -135,16 +135,31 @@ static void send_response(int client_fd, http_response_t *response) {
         content_type = content_type_with_charset;
     }
     
-    header_len = snprintf(header, sizeof(header),
-                         "HTTP/1.1 %d %s\r\n"
-                         "Content-Type: %s\r\n"
-                         "Content-Length: %zu\r\n"
-                         "Connection: close\r\n"
-                         "\r\n",
-                         response->status_code,
-                         status_msg,
-                         content_type,
-                         response->body_len);
+    if (response->set_cookie) {
+        header_len = snprintf(header, sizeof(header),
+                             "HTTP/1.1 %d %s\r\n"
+                             "Content-Type: %s\r\n"
+                             "Content-Length: %zu\r\n"
+                             "Set-Cookie: %s\r\n"
+                             "Connection: close\r\n"
+                             "\r\n",
+                             response->status_code,
+                             status_msg,
+                             content_type,
+                             response->body_len,
+                             response->set_cookie);
+    } else {
+        header_len = snprintf(header, sizeof(header),
+                             "HTTP/1.1 %d %s\r\n"
+                             "Content-Type: %s\r\n"
+                             "Content-Length: %zu\r\n"
+                             "Connection: close\r\n"
+                             "\r\n",
+                             response->status_code,
+                             status_msg,
+                             content_type,
+                             response->body_len);
+    }
     
     write(client_fd, header, header_len);
     
@@ -193,26 +208,43 @@ static void handle_client(int client_fd) {
     
     char *headers_start = line_end + 2;
     char *body_start = strstr(headers_start, "\r\n\r\n");
+    char *headers_end = body_start ? body_start : buffer + bytes_read;
     
     if (body_start) {
         body_start += 4;
         size_t body_len = bytes_read - (body_start - buffer);
         req.body = body_start;
         req.body_len = body_len;
-        
-        char *content_type = strstr(headers_start, "Content-Type:");
-        if (content_type && content_type < body_start) {
-            content_type += 13;
-            while (*content_type == ' ') content_type++;
-            char *type_end = strstr(content_type, "\r\n");
-            if (type_end) {
-                static char ct_buffer[128];
-                size_t ct_len = type_end - content_type;
-                if (ct_len < sizeof(ct_buffer)) {
-                    memcpy(ct_buffer, content_type, ct_len);
-                    ct_buffer[ct_len] = '\0';
-                    req.content_type = ct_buffer;
-                }
+    }
+    
+    char *content_type = strstr(headers_start, "Content-Type:");
+    if (content_type && content_type < headers_end) {
+        content_type += 13;
+        while (*content_type == ' ') content_type++;
+        char *type_end = strstr(content_type, "\r\n");
+        if (type_end) {
+            static char ct_buffer[128];
+            size_t ct_len = type_end - content_type;
+            if (ct_len < sizeof(ct_buffer)) {
+                memcpy(ct_buffer, content_type, ct_len);
+                ct_buffer[ct_len] = '\0';
+                req.content_type = ct_buffer;
+            }
+        }
+    }
+    
+    char *cookie_header = strstr(headers_start, "Cookie:");
+    if (cookie_header && cookie_header < headers_end) {
+        cookie_header += 7;
+        while (*cookie_header == ' ') cookie_header++;
+        char *cookie_end = strstr(cookie_header, "\r\n");
+        if (cookie_end) {
+            static char cookie_buffer[512];
+            size_t cookie_len = cookie_end - cookie_header;
+            if (cookie_len < sizeof(cookie_buffer)) {
+                memcpy(cookie_buffer, cookie_header, cookie_len);
+                cookie_buffer[cookie_len] = '\0';
+                req.cookies = cookie_buffer;
             }
         }
     }
@@ -293,6 +325,7 @@ http_response_t *http_response_create(int status_code, const char *content_type,
     
     response->status_code = status_code;
     response->content_type = content_type;
+    response->set_cookie = NULL;
     
     if (body && body_len > 0) {
         response->body = malloc(body_len);
@@ -315,6 +348,9 @@ void http_response_free(http_response_t *response) {
     if (response) {
         if (response->body) {
             free(response->body);
+        }
+        if (response->set_cookie) {
+            free(response->set_cookie);
         }
         free(response);
     }

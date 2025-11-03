@@ -100,12 +100,43 @@ int db_migrate(void) {
         "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
         "    FOREIGN KEY (thread_id) REFERENCES threads(id),"
         "    FOREIGN KEY (reply_to) REFERENCES posts(id)"
+        ");"
+        "CREATE TABLE IF NOT EXISTS admin_users ("
+        "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "    username TEXT NOT NULL UNIQUE,"
+        "    password TEXT NOT NULL,"
+        "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP"
+        ");"
+        "CREATE TABLE IF NOT EXISTS admin_sessions ("
+        "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "    user_id INTEGER NOT NULL,"
+        "    token TEXT NOT NULL UNIQUE,"
+        "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+        "    expires_at DATETIME NOT NULL,"
+        "    FOREIGN KEY (user_id) REFERENCES admin_users(id)"
         ");";
     
     int rc = db_exec(create_tables_sql);
     if (rc != 0) {
         fprintf(stderr, "Failed to run migrations\n");
         return -1;
+    }
+    
+    const char *check_admin_sql = "SELECT COUNT(*) FROM admin_users";
+    sqlite3_stmt *stmt = db_prepare(check_admin_sql);
+    int admin_count = 0;
+    if (stmt) {
+        if (db_step(stmt) == SQLITE_ROW) {
+            admin_count = sqlite3_column_int(stmt, 0);
+        }
+        db_finalize(stmt);
+    }
+    
+    if (admin_count == 0) {
+        printf("Creating default admin user (username: admin, password: admin)\n");
+        const char *insert_admin_sql = 
+            "INSERT INTO admin_users (username, password) VALUES ('admin', 'admin')";
+        db_exec(insert_admin_sql);
     }
     
     printf("Database migrations completed successfully\n");
