@@ -33,11 +33,10 @@ jobs:
         run: |
           sudo mkdir -p /opt/cosmo
           cd /opt/cosmo
-          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmocc
-          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmoar
-          sudo chmod +x cosmocc cosmoar
-          sudo mkdir -p bin
-          sudo mv cosmocc cosmoar bin/
+          sudo wget -q https://cosmo.zip/pub/cosmocc/cosmocc.zip
+          sudo unzip -q cosmocc.zip
+          sudo rm cosmocc.zip
+          sudo chmod +x bin/cosmocc bin/cosmoar
           echo "Cosmopolitan toolchain installed"
       
       - name: Verify Cosmopolitan installation
@@ -88,11 +87,10 @@ jobs:
         run: |
           sudo mkdir -p /opt/cosmo
           cd /opt/cosmo
-          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmocc
-          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmoar
-          sudo chmod +x cosmocc cosmoar
-          sudo mkdir -p bin
-          sudo mv cosmocc cosmoar bin/
+          sudo wget -q https://cosmo.zip/pub/cosmocc/cosmocc.zip
+          sudo unzip -q cosmocc.zip
+          sudo rm cosmocc.zip
+          sudo chmod +x bin/cosmocc bin/cosmoar
       
       - name: Build and run tests with Cosmopolitan
         run: |
@@ -128,11 +126,10 @@ jobs:
         run: |
           sudo mkdir -p /opt/cosmo
           cd /opt/cosmo
-          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmocc
-          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmoar
-          sudo chmod +x cosmocc cosmoar
-          sudo mkdir -p bin
-          sudo mv cosmocc cosmoar bin/
+          sudo wget -q https://cosmo.zip/pub/cosmocc/cosmocc.zip
+          sudo unzip -q cosmocc.zip
+          sudo rm cosmocc.zip
+          sudo chmod +x bin/cosmocc bin/cosmoar
       
       - name: Check for syntax errors with Cosmopolitan
         run: |
