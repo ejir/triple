@@ -4,6 +4,7 @@
 #include "render.h"
 #include "db.h"
 #include "admin.h"
+#include "i18n.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -130,19 +131,21 @@ void board_register_routes(void) {
 }
 
 http_response_t *board_list_handler(http_request_t *req) {
-    char *html = malloc(8192);
+    language_t lang = i18n_get_language(req);
+    
+    char *html = malloc(16384);
     if (!html) {
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
         return http_response_create(500, "text/html", err, strlen(err));
     }
     
-    int len = snprintf(html, 8192,
+    int len = snprintf(html, 16384,
         "<!DOCTYPE html>\n"
         "<html>\n"
         "<head>\n"
         "<meta charset=\"UTF-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-        "<title>Message Boards</title>\n"
+        "<title>%s</title>\n"
         "<style>\n"
         ":root {\n"
         "  --primary: #1976d2;\n"
@@ -158,7 +161,7 @@ http_response_t *board_list_handler(http_request_t *req) {
         "}\n"
         "* { box-sizing: border-box; margin: 0; padding: 0; }\n"
         "body {\n"
-        "  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;\n"
+        "  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif, 'Microsoft YaHei', 'SimHei';\n"
         "  background: var(--background);\n"
         "  color: var(--text-primary);\n"
         "  line-height: 1.6;\n"
@@ -178,8 +181,17 @@ http_response_t *board_list_handler(http_request_t *req) {
         "  font-weight: 500;\n"
         "  margin-bottom: 24px;\n"
         "  color: var(--primary);\n"
+        "  display: flex;\n"
+        "  justify-content: space-between;\n"
+        "  align-items: center;\n"
+        "  flex-wrap: wrap;\n"
         "}\n"
         "@media (max-width: 768px) { h1 { font-size: 1.5rem; } }\n"
+        ".lang-switch { font-size: 0.875rem; font-weight: normal; }\n"
+        ".lang-switch a { color: var(--primary); text-decoration: none; padding: 6px 12px;\n"
+        "  border: 1px solid var(--primary); border-radius: 4px; margin-left: 8px; transition: all 0.2s; }\n"
+        ".lang-switch a:hover { background: var(--primary); color: white; }\n"
+        ".lang-switch a.active { background: var(--primary); color: white; }\n"
         ".board-list { list-style: none; }\n"
         ".board-item {\n"
         "  display: block;\n"
@@ -242,11 +254,27 @@ http_response_t *board_list_handler(http_request_t *req) {
         "}\n"
         "textarea { min-height: 120px; resize: vertical; }\n"
         "</style>\n"
+        "<script>\n"
+        "function setLanguage(lang) {\n"
+        "  document.cookie = 'lang=' + lang + '; path=/; max-age=31536000';\n"
+        "  window.location.href = '/?lang=' + lang;\n"
+        "}\n"
+        "</script>\n"
         "</head>\n"
         "<body>\n"
         "<div class=\"container\">\n"
-        "<h1>📋 Message Boards</h1>\n"
-        "<ul class=\"board-list\">\n");
+        "<h1>\n"
+        "  <span>📋 %s</span>\n"
+        "  <span class=\"lang-switch\">\n"
+        "    <a href=\"#\" onclick=\"setLanguage('en'); return false;\" class=\"%s\">English</a>\n"
+        "    <a href=\"#\" onclick=\"setLanguage('zh-cn'); return false;\" class=\"%s\">中文</a>\n"
+        "  </span>\n"
+        "</h1>\n"
+        "<ul class=\"board-list\">\n",
+        i18n_get(lang, "message_boards"),
+        i18n_get(lang, "message_boards"),
+        (lang == LANG_EN ? "active" : ""),
+        (lang == LANG_ZH_CN ? "active" : ""));
     
     sqlite3_stmt *stmt = db_prepare("SELECT id, name, title, description FROM boards ORDER BY name");
     if (stmt) {
@@ -277,31 +305,36 @@ http_response_t *board_list_handler(http_request_t *req) {
         db_finalize(stmt);
     }
     
-    len += snprintf(html + len, 8192 - len, "</ul>\n");
+    len += snprintf(html + len, 16384 - len, "</ul>\n");
     
     if (admin_is_authenticated(req)) {
-        len += snprintf(html + len, 8192 - len,
+        len += snprintf(html + len, 16384 - len,
             "<div class=\"card\" style=\"margin-top:24px;\">\n"
-            "<h2 style=\"font-size:1.5rem;margin-bottom:16px;\">Create New Board</h2>\n"
+            "<h2 style=\"font-size:1.5rem;margin-bottom:16px;\">%s</h2>\n"
             "<form method=\"POST\" action=\"/board/create\">\n"
             "<div style=\"margin-bottom:16px;\">\n"
-            "<label style=\"display:block;margin-bottom:4px;font-weight:500;\">Name</label>\n"
+            "<label style=\"display:block;margin-bottom:4px;font-weight:500;\">%s</label>\n"
             "<input type=\"text\" name=\"name\" required>\n"
             "</div>\n"
             "<div style=\"margin-bottom:16px;\">\n"
-            "<label style=\"display:block;margin-bottom:4px;font-weight:500;\">Title</label>\n"
+            "<label style=\"display:block;margin-bottom:4px;font-weight:500;\">%s</label>\n"
             "<input type=\"text\" name=\"title\" required>\n"
             "</div>\n"
             "<div style=\"margin-bottom:16px;\">\n"
-            "<label style=\"display:block;margin-bottom:4px;font-weight:500;\">Description</label>\n"
+            "<label style=\"display:block;margin-bottom:4px;font-weight:500;\">%s</label>\n"
             "<textarea name=\"description\"></textarea>\n"
             "</div>\n"
-            "<button type=\"submit\" class=\"btn\">Create Board</button>\n"
+            "<button type=\"submit\" class=\"btn\">%s</button>\n"
             "</form>\n"
-            "</div>\n");
+            "</div>\n",
+            i18n_get(lang, "create_new_board"),
+            i18n_get(lang, "name"),
+            i18n_get(lang, "title"),
+            i18n_get(lang, "description"),
+            i18n_get(lang, "create_board"));
     }
     
-    len += snprintf(html + len, 8192 - len,
+    len += snprintf(html + len, 16384 - len,
         "</div>\n"
         "</body>\n"
         "</html>");

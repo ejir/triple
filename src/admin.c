@@ -2,6 +2,7 @@
 #include "router.h"
 #include "render.h"
 #include "db.h"
+#include "i18n.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
