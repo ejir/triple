@@ -307,6 +307,29 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "<head>\n"
         "<meta charset=\"UTF-8\">\n"
         "<title>%s</title>\n"
+        "<style>\n"
+        ".post { border:1px solid #ddd; padding:8px; margin:8px 0; position:relative; }\n"
+        ".post-header { display:flex; justify-content:space-between; align-items:center; }\n"
+        ".reply-btn { background:#4CAF50; color:white; border:none; padding:4px 8px; cursor:pointer; border-radius:3px; }\n"
+        ".reply-btn:hover { background:#45a049; }\n"
+        ".quote-ref { color:#0066cc; cursor:pointer; text-decoration:underline; }\n"
+        ".quote-ref:hover { color:#0052a3; }\n"
+        ".quoted-post { display:none; background:#f5f5f5; border-left:3px solid #0066cc; padding:8px; margin:8px 0; font-size:0.9em; }\n"
+        ".quoted-post.expanded { display:block; }\n"
+        "</style>\n"
+        "<script>\n"
+        "function replyToPost(postId) {\n"
+        "  document.getElementById('reply_to').value = postId;\n"
+        "  document.getElementById('reply-form').scrollIntoView({behavior:'smooth'});\n"
+        "  document.getElementById('content').focus();\n"
+        "}\n"
+        "function toggleQuote(postId) {\n"
+        "  var quote = document.getElementById('quote-' + postId);\n"
+        "  if (quote) {\n"
+        "    quote.classList.toggle('expanded');\n"
+        "  }\n"
+        "}\n"
+        "</script>\n"
         "</head>\n"
         "<body>\n"
         "<h1>%s</h1>\n"
@@ -323,8 +346,11 @@ http_response_t *thread_view_handler(http_request_t *req) {
         thread->content ? thread->content : "No content");
     
     sqlite3_stmt *stmt = db_prepare(
-        "SELECT id, author, content, created_at FROM posts "
-        "WHERE thread_id = ? ORDER BY created_at ASC"
+        "SELECT p.id, p.author, p.content, p.created_at, p.reply_to, "
+        "rp.id, rp.author, rp.content "
+        "FROM posts p "
+        "LEFT JOIN posts rp ON p.reply_to = rp.id "
+        "WHERE p.thread_id = ? ORDER BY p.created_at ASC"
     );
     
     if (stmt) {
@@ -334,14 +360,46 @@ http_response_t *thread_view_handler(http_request_t *req) {
             int64_t post_id = sqlite3_column_int64(stmt, 0);
             const char *author = (const char *)sqlite3_column_text(stmt, 1);
             const char *content = (const char *)sqlite3_column_text(stmt, 2);
+            int64_t reply_to = sqlite3_column_int64(stmt, 4);
+            int64_t reply_to_id = sqlite3_column_int64(stmt, 5);
+            const char *reply_to_author = (const char *)sqlite3_column_text(stmt, 6);
+            const char *reply_to_content = (const char *)sqlite3_column_text(stmt, 7);
             
             len += snprintf(html + len, 32768 - len,
-                "<div style=\"border:1px solid #ddd; padding:8px; margin:8px 0;\">\n"
-                "<p><strong>%s</strong> (#%lld)</p>\n"
+                "<div class=\"post\" id=\"post-%lld\">\n"
+                "<div class=\"post-header\">\n"
+                "<div><strong>%s</strong> (#%lld)",
+                (long long)post_id,
+                author ? author : "Anonymous",
+                (long long)post_id);
+            
+            if (reply_to > 0 && reply_to_id > 0) {
+                len += snprintf(html + len, 32768 - len,
+                    " <span class=\"quote-ref\" onclick=\"toggleQuote(%lld)\">&gt;&gt;%lld</span>",
+                    (long long)reply_to_id,
+                    (long long)reply_to_id);
+            }
+            
+            len += snprintf(html + len, 32768 - len,
+                "</div>\n"
+                "<button class=\"reply-btn\" onclick=\"replyToPost(%lld)\">Reply</button>\n"
+                "</div>\n",
+                (long long)post_id);
+            
+            if (reply_to > 0 && reply_to_id > 0 && reply_to_content) {
+                len += snprintf(html + len, 32768 - len,
+                    "<div class=\"quoted-post\" id=\"quote-%lld\">\n"
+                    "<strong>%s</strong> (#%lld): %s\n"
+                    "</div>\n",
+                    (long long)reply_to_id,
+                    reply_to_author ? reply_to_author : "Anonymous",
+                    (long long)reply_to_id,
+                    reply_to_content);
+            }
+            
+            len += snprintf(html + len, 32768 - len,
                 "<p>%s</p>\n"
                 "</div>\n",
-                author ? author : "Anonymous",
-                (long long)post_id,
                 content ? content : "");
         }
         db_finalize(stmt);
@@ -350,10 +408,11 @@ http_response_t *thread_view_handler(http_request_t *req) {
     len += snprintf(html + len, 32768 - len,
         "<hr>\n"
         "<h2>Reply to Thread</h2>\n"
-        "<form method=\"POST\" action=\"/post\">\n"
+        "<form id=\"reply-form\" method=\"POST\" action=\"/post\">\n"
         "<input type=\"hidden\" name=\"thread_id\" value=\"%lld\">\n"
+        "<input type=\"hidden\" id=\"reply_to\" name=\"reply_to\" value=\"\">\n"
         "Name: <input type=\"text\" name=\"author\" placeholder=\"Anonymous\"><br>\n"
-        "Content: <textarea name=\"content\" required></textarea><br>\n"
+        "Content: <textarea id=\"content\" name=\"content\" required></textarea><br>\n"
         "<button type=\"submit\">Post Reply</button>\n"
         "</form>\n"
         "</body>\n"
@@ -430,12 +489,13 @@ http_response_t *thread_create_handler(http_request_t *req) {
     }
     
     sqlite3_stmt *post_stmt = db_prepare(
-        "INSERT INTO posts (thread_id, author, content) VALUES (?, ?, ?)"
+        "INSERT INTO posts (thread_id, author, content, reply_to) VALUES (?, ?, ?, ?)"
     );
     if (post_stmt) {
         sqlite3_bind_int64(post_stmt, 1, thread_id);
         sqlite3_bind_text(post_stmt, 2, author, -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(post_stmt, 3, content, -1, SQLITE_TRANSIENT);
+        sqlite3_bind_null(post_stmt, 4);
         db_step(post_stmt);
         db_finalize(post_stmt);
     }
@@ -466,6 +526,7 @@ http_response_t *post_create_handler(http_request_t *req) {
     }
     
     int64_t thread_id = 0;
+    int64_t reply_to = 0;
     char author[128] = "Anonymous";
     char content[2048] = {0};
     char decoded_value[2048];
@@ -486,6 +547,8 @@ http_response_t *post_create_handler(http_request_t *req) {
             
             if (strcmp(key, "thread_id") == 0) {
                 thread_id = atoll(value);
+            } else if (strcmp(key, "reply_to") == 0 && strlen(value) > 0) {
+                reply_to = atoll(value);
             } else if (strcmp(key, "author") == 0 && strlen(value) > 0) {
                 url_decode(decoded_value, value, sizeof(decoded_value));
                 if (strlen(decoded_value) > 0) {
@@ -505,7 +568,7 @@ http_response_t *post_create_handler(http_request_t *req) {
     }
     
     sqlite3_stmt *stmt = db_prepare(
-        "INSERT INTO posts (thread_id, author, content) VALUES (?, ?, ?)"
+        "INSERT INTO posts (thread_id, author, content, reply_to) VALUES (?, ?, ?, ?)"
     );
     if (!stmt) {
         const char *html = "<html><body><h1>Error: Failed to create post</h1></body></html>";
@@ -515,6 +578,11 @@ http_response_t *post_create_handler(http_request_t *req) {
     sqlite3_bind_int64(stmt, 1, thread_id);
     sqlite3_bind_text(stmt, 2, author, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, content, -1, SQLITE_TRANSIENT);
+    if (reply_to > 0) {
+        sqlite3_bind_int64(stmt, 4, reply_to);
+    } else {
+        sqlite3_bind_null(stmt, 4);
+    }
     
     int rc = db_step(stmt);
     db_finalize(stmt);

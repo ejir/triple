@@ -96,8 +96,10 @@ int db_migrate(void) {
         "    thread_id INTEGER NOT NULL,"
         "    author TEXT,"
         "    content TEXT NOT NULL,"
+        "    reply_to INTEGER,"
         "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
-        "    FOREIGN KEY (thread_id) REFERENCES threads(id)"
+        "    FOREIGN KEY (thread_id) REFERENCES threads(id),"
+        "    FOREIGN KEY (reply_to) REFERENCES posts(id)"
         ");";
     
     int rc = db_exec(create_tables_sql);
