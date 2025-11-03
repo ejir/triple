@@ -3,11 +3,12 @@ set -e
 
 COSMO_DIR="${COSMO_DIR:-/opt/cosmo}"
 CC="${COSMO_DIR}/bin/cosmocc"
-CFLAGS="-O2 -Wall -Wextra -std=c11 -Isrc"
+CFLAGS="-O2 -Wall -Wextra -std=c11 -Isrc -Ithird_party/sqlite3"
 LDFLAGS="-static"
 TARGET="app.com"
 OBJ_DIR="obj"
 SRC_DIR="src"
+SQLITE3_DIR="third_party/sqlite3"
 
 echo "=== Cosmopolitan Build Script ==="
 echo "Toolchain: ${COSMO_DIR}"
@@ -34,6 +35,11 @@ SOURCES=(
 )
 
 OBJECTS=()
+
+echo "Compiling SQLite3..."
+"${CC}" ${CFLAGS} -DSQLITE_THREADSAFE=0 -DSQLITE_OMIT_LOAD_EXTENSION \
+    -c "${SQLITE3_DIR}/sqlite3.c" -o "${OBJ_DIR}/sqlite3.o"
+OBJECTS+=("${OBJ_DIR}/sqlite3.o")
 
 for source in "${SOURCES[@]}"; do
     obj_file="${OBJ_DIR}/${source%.c}.o"

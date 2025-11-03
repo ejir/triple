@@ -3,9 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-typedef struct sqlite3 sqlite3;
-typedef struct sqlite3_stmt sqlite3_stmt;
+#include "sqlite3.h"
 
 int db_init(const char *db_path);
 void db_close(void);

@@ -1,16 +1,25 @@
 #include "db.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static sqlite3 *db_conn = NULL;
 
 int db_init(const char *db_path) {
-    printf("Database initialized: %s (stub)\n", db_path);
+    int rc = sqlite3_open(db_path, &db_conn);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to open database: %s\n", sqlite3_errmsg(db_conn));
+        sqlite3_close(db_conn);
+        db_conn = NULL;
+        return -1;
+    }
+    printf("Database initialized: %s\n", db_path);
     return 0;
 }
 
 void db_close(void) {
     if (db_conn) {
+        sqlite3_close(db_conn);
         db_conn = NULL;
         printf("Database connection closed\n");
     }
@@ -21,23 +30,82 @@ sqlite3 *db_get_connection(void) {
 }
 
 int db_exec(const char *sql) {
-    printf("Executing SQL: %s (stub)\n", sql);
+    if (!db_conn) {
+        fprintf(stderr, "Database not initialized\n");
+        return -1;
+    }
+    
+    char *err_msg = NULL;
+    int rc = sqlite3_exec(db_conn, sql, NULL, NULL, &err_msg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        return -1;
+    }
     return 0;
 }
 
 sqlite3_stmt *db_prepare(const char *sql) {
-    printf("Preparing SQL: %s (stub)\n", sql);
-    return NULL;
+    if (!db_conn) {
+        fprintf(stderr, "Database not initialized\n");
+        return NULL;
+    }
+    
+    sqlite3_stmt *stmt = NULL;
+    int rc = sqlite3_prepare_v2(db_conn, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(db_conn));
+        return NULL;
+    }
+    return stmt;
 }
 
 int db_step(sqlite3_stmt *stmt) {
-    return 0;
+    if (!stmt) {
+        return SQLITE_ERROR;
+    }
+    return sqlite3_step(stmt);
 }
 
 void db_finalize(sqlite3_stmt *stmt) {
+    if (stmt) {
+        sqlite3_finalize(stmt);
+    }
 }
 
 int db_migrate(void) {
-    printf("Running database migrations (stub)\n");
+    printf("Running database migrations...\n");
+    
+    const char *create_tables_sql = 
+        "CREATE TABLE IF NOT EXISTS boards ("
+        "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "    name TEXT NOT NULL UNIQUE,"
+        "    title TEXT NOT NULL,"
+        "    description TEXT,"
+        "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP"
+        ");"
+        "CREATE TABLE IF NOT EXISTS threads ("
+        "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "    board_id INTEGER NOT NULL,"
+        "    subject TEXT NOT NULL,"
+        "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+        "    FOREIGN KEY (board_id) REFERENCES boards(id)"
+        ");"
+        "CREATE TABLE IF NOT EXISTS posts ("
+        "    id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "    thread_id INTEGER NOT NULL,"
+        "    author TEXT,"
+        "    content TEXT NOT NULL,"
+        "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
+        "    FOREIGN KEY (thread_id) REFERENCES threads(id)"
+        ");";
+    
+    int rc = db_exec(create_tables_sql);
+    if (rc != 0) {
+        fprintf(stderr, "Failed to run migrations\n");
+        return -1;
+    }
+    
+    printf("Database migrations completed successfully\n");
     return 0;
 }
