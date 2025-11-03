@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Database ENOENT/Segfault Issues
+  - Added directory existence checks before database initialization
+  - Disabled SQLite memory-mapped I/O (`PRAGMA mmap_size=0`) to prevent SIGSEGV on file deletion
+  - Enabled WAL mode (`PRAGMA journal_mode=WAL`) for better concurrency
+  - Set synchronous mode to NORMAL for improved performance and safety
+  - Added 5-second busy timeout to handle lock contention
+  - Auto-create upload directory if it doesn't exist
+  
+### Changed
+- CI/CD Enhancement
+  - Added automatic GitHub Release creation when new tags are pushed
+  - Release includes compiled binary (`app.com`) and SHA256 checksums
+  - Release notes are automatically generated from commits
+
 ### Added
 - SQLite3 integration (version 3.46.1)
   - Added SQLite3 amalgamation source in `third_party/sqlite3/`

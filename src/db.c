@@ -1,11 +1,50 @@
+#define _POSIX_C_SOURCE 200809L
 #include "db.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <unistd.h>
+#include <libgen.h>
 
 static sqlite3 *db_conn = NULL;
 
+static int ensure_directory_exists(const char *path) {
+    char *path_copy = strdup(path);
+    if (!path_copy) {
+        return -1;
+    }
+    
+    char *dir = dirname(path_copy);
+    
+    struct stat st;
+    if (stat(dir, &st) == 0) {
+        free(path_copy);
+        return 0;
+    }
+    
+    if (mkdir(dir, 0755) != 0 && errno != EEXIST) {
+        fprintf(stderr, "Failed to create directory %s: %s\n", dir, strerror(errno));
+        free(path_copy);
+        return -1;
+    }
+    
+    free(path_copy);
+    return 0;
+}
+
 int db_init(const char *db_path) {
+    if (!db_path || strlen(db_path) == 0) {
+        fprintf(stderr, "Invalid database path\n");
+        return -1;
+    }
+    
+    if (ensure_directory_exists(db_path) != 0) {
+        fprintf(stderr, "Failed to ensure database directory exists\n");
+        return -1;
+    }
+    
     int rc = sqlite3_open(db_path, &db_conn);
     if (rc != SQLITE_OK) {
         fprintf(stderr, "Failed to open database: %s\n", sqlite3_errmsg(db_conn));
@@ -13,6 +52,28 @@ int db_init(const char *db_path) {
         db_conn = NULL;
         return -1;
     }
+    
+    sqlite3_busy_timeout(db_conn, 5000);
+    
+    char *err_msg = NULL;
+    rc = sqlite3_exec(db_conn, "PRAGMA journal_mode=WAL;", NULL, NULL, &err_msg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to set WAL mode: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+    
+    rc = sqlite3_exec(db_conn, "PRAGMA synchronous=NORMAL;", NULL, NULL, &err_msg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to set synchronous mode: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+    
+    rc = sqlite3_exec(db_conn, "PRAGMA mmap_size=0;", NULL, NULL, &err_msg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Failed to disable mmap: %s\n", err_msg);
+        sqlite3_free(err_msg);
+    }
+    
     printf("Database initialized: %s\n", db_path);
     return 0;
 }
