@@ -13,5 +13,6 @@ render_result_t *render_html(const char *html, size_t len);
 void render_free(render_result_t *result);
 
 char *render_escape_html(const char *str);
+char *render_escape_js(const char *str);
 
 #endif

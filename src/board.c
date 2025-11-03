@@ -3,6 +3,7 @@
 #include "router.h"
 #include "render.h"
 #include "db.h"
+#include "admin.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,7 +130,6 @@ void board_register_routes(void) {
 }
 
 http_response_t *board_list_handler(http_request_t *req) {
-    (void)req;
     char *html = malloc(8192);
     if (!html) {
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
@@ -155,26 +155,39 @@ http_response_t *board_list_handler(http_request_t *req) {
             const char *title = (const char *)sqlite3_column_text(stmt, 2);
             const char *desc = (const char *)sqlite3_column_text(stmt, 3);
             
+            char *escaped_name = render_escape_html(name ? name : "Unknown");
+            char *escaped_title = render_escape_html(title ? title : "No Title");
+            char *escaped_desc = render_escape_html(desc ? desc : "");
+            
             len += snprintf(html + len, 8192 - len,
                 "<li><a href=\"/board?id=%lld\">%s - %s</a><br><small>%s</small></li>\n",
                 (long long)id, 
-                name ? name : "Unknown",
-                title ? title : "No Title",
-                desc ? desc : "");
+                escaped_name ? escaped_name : "Unknown",
+                escaped_title ? escaped_title : "No Title",
+                escaped_desc ? escaped_desc : "");
+            
+            free(escaped_name);
+            free(escaped_title);
+            free(escaped_desc);
         }
         db_finalize(stmt);
     }
     
+    len += snprintf(html + len, 8192 - len, "</ul>\n");
+    
+    if (admin_is_authenticated(req)) {
+        len += snprintf(html + len, 8192 - len,
+            "<hr>\n"
+            "<h2>Create New Board</h2>\n"
+            "<form method=\"POST\" action=\"/board/create\">\n"
+            "Name: <input type=\"text\" name=\"name\" required><br>\n"
+            "Title: <input type=\"text\" name=\"title\" required><br>\n"
+            "Description: <textarea name=\"description\"></textarea><br>\n"
+            "<button type=\"submit\">Create Board</button>\n"
+            "</form>\n");
+    }
+    
     len += snprintf(html + len, 8192 - len,
-        "</ul>\n"
-        "<hr>\n"
-        "<h2>Create New Board</h2>\n"
-        "<form method=\"POST\" action=\"/board/create\">\n"
-        "Name: <input type=\"text\" name=\"name\" required><br>\n"
-        "Title: <input type=\"text\" name=\"title\" required><br>\n"
-        "Description: <textarea name=\"description\"></textarea><br>\n"
-        "<button type=\"submit\">Create Board</button>\n"
-        "</form>\n"
         "</body>\n"
         "</html>");
     
@@ -184,6 +197,14 @@ http_response_t *board_list_handler(http_request_t *req) {
 }
 
 http_response_t *board_create_handler(http_request_t *req) {
+    if (!admin_is_authenticated(req)) {
+        const char *html = 
+            "<html><body><h1>Access Denied</h1>"
+            "<p>Only administrators can create boards.</p>"
+            "<a href=\"/\">Back to boards</a></body></html>";
+        return http_response_create(403, "text/html", html, strlen(html));
+    }
+    
     if (!req->body) {
         const char *html = "<html><body><h1>Error: No form data</h1></body></html>";
         return http_response_create(400, "text/html", html, strlen(html));
@@ -252,13 +273,17 @@ http_response_t *board_create_handler(http_request_t *req) {
         return http_response_create(500, "text/html", err, strlen(err));
     }
     
+    char *escaped_title = render_escape_html(title);
+    
     int len = snprintf(html, 512,
         "<html><body><h1>Board Created!</h1>"
         "<p>Board '%s' has been created.</p>"
         "<a href=\"/board?id=%lld\">View Board</a> | "
         "<a href=\"/\">Back to All Boards</a></body></html>",
-        title,
+        escaped_title ? escaped_title : title,
         (long long)board_id);
+    
+    free(escaped_title);
     
     http_response_t *response = http_response_create(200, "text/html", html, len);
     free(html);
@@ -283,6 +308,11 @@ http_response_t *board_view_handler(http_request_t *req) {
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
         return http_response_create(500, "text/html", err, strlen(err));
     }
+    
+    char *escaped_name_title = render_escape_html(board->name ? board->name : "Board");
+    char *escaped_name_h1 = render_escape_html(board->name ? board->name : "board");
+    char *escaped_name_body = render_escape_html(board->name ? board->name : "Board");
+    char *escaped_desc = render_escape_html(board->description ? board->description : "No description");
     
     int len = snprintf(html, 32768,
         "<!DOCTYPE html>\n"
@@ -324,10 +354,15 @@ http_response_t *board_view_handler(http_request_t *req) {
         "<a href=\"/\">Back to boards</a><hr>\n"
         "<h2>Threads</h2>\n"
         "<ul>\n",
-        board->name ? board->name : "Board",
-        board->name ? board->name : "board",
-        board->name ? board->name : "Board",
-        board->description ? board->description : "No description");
+        escaped_name_title ? escaped_name_title : "Board",
+        escaped_name_h1 ? escaped_name_h1 : "board",
+        escaped_name_body ? escaped_name_body : "Board",
+        escaped_desc ? escaped_desc : "No description");
+    
+    free(escaped_name_title);
+    free(escaped_name_h1);
+    free(escaped_name_body);
+    free(escaped_desc);
     
     sqlite3_stmt *stmt = db_prepare(
         "SELECT t.id, t.subject, COUNT(p.id) as post_count "
@@ -345,11 +380,15 @@ http_response_t *board_view_handler(http_request_t *req) {
             const char *subject = (const char *)sqlite3_column_text(stmt, 1);
             int post_count = sqlite3_column_int(stmt, 2);
             
+            char *escaped_subject = render_escape_html(subject ? subject : "No Subject");
+            
             len += snprintf(html + len, 32768 - len,
                 "<li><a href=\"/thread?id=%lld\">%s</a> (%d posts)</li>\n",
                 (long long)thread_id,
-                subject ? subject : "No Subject",
+                escaped_subject ? escaped_subject : "No Subject",
                 post_count);
+            
+            free(escaped_subject);
         }
         db_finalize(stmt);
     }
@@ -369,17 +408,23 @@ http_response_t *board_view_handler(http_request_t *req) {
         (long long)board_id);
     
     for (int i = 0; i < kaomoji_categories_count && len < 32768 - 1024; i++) {
+        char *escaped_title = render_escape_html(kaomoji_categories[i].title);
         len += snprintf(html + len, 32768 - len,
             "<div class=\"kaomoji-category\">\n"
             "<div class=\"kaomoji-title\">%s</div>\n"
             "<div class=\"kaomoji-items\">\n",
-            kaomoji_categories[i].title);
+            escaped_title ? escaped_title : kaomoji_categories[i].title);
+        free(escaped_title);
         
         for (int j = 0; j < kaomoji_categories[i].count && len < 32768 - 512; j++) {
+            char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
+            char *escaped_html = render_escape_html(kaomoji_categories[i].items[j]);
             len += snprintf(html + len, 32768 - len,
                 "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
-                kaomoji_categories[i].items[j],
-                kaomoji_categories[i].items[j]);
+                escaped_js ? escaped_js : kaomoji_categories[i].items[j],
+                escaped_html ? escaped_html : kaomoji_categories[i].items[j]);
+            free(escaped_js);
+            free(escaped_html);
         }
         
         len += snprintf(html + len, 32768 - len,
@@ -419,6 +464,11 @@ http_response_t *thread_view_handler(http_request_t *req) {
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
         return http_response_create(500, "text/html", err, strlen(err));
     }
+    
+    char *escaped_subject_title = render_escape_html(thread->subject ? thread->subject : "Thread");
+    char *escaped_subject_h1 = render_escape_html(thread->subject ? thread->subject : "Thread");
+    char *escaped_author = render_escape_html(thread->author ? thread->author : "Anonymous");
+    char *escaped_content = render_escape_html(thread->content ? thread->content : "No content");
     
     int len = snprintf(html, 32768,
         "<!DOCTYPE html>\n"
@@ -481,11 +531,16 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "<p>%s</p>\n"
         "</div>\n"
         "<h2>Replies</h2>\n",
-        thread->subject ? thread->subject : "Thread",
-        thread->subject ? thread->subject : "Thread",
+        escaped_subject_title ? escaped_subject_title : "Thread",
+        escaped_subject_h1 ? escaped_subject_h1 : "Thread",
         (long long)thread->board_id,
-        thread->author ? thread->author : "Anonymous",
-        thread->content ? thread->content : "No content");
+        escaped_author ? escaped_author : "Anonymous",
+        escaped_content ? escaped_content : "No content");
+    
+    free(escaped_subject_title);
+    free(escaped_subject_h1);
+    free(escaped_author);
+    free(escaped_content);
     
     sqlite3_stmt *stmt = db_prepare(
         "SELECT p.id, p.author, p.content, p.created_at, p.reply_to, "
@@ -507,12 +562,15 @@ http_response_t *thread_view_handler(http_request_t *req) {
             const char *reply_to_author = (const char *)sqlite3_column_text(stmt, 6);
             const char *reply_to_content = (const char *)sqlite3_column_text(stmt, 7);
             
+            char *escaped_author = render_escape_html(author ? author : "Anonymous");
+            char *escaped_content = render_escape_html(content ? content : "");
+            
             len += snprintf(html + len, 32768 - len,
                 "<div class=\"post\" id=\"post-%lld\">\n"
                 "<div class=\"post-header\">\n"
                 "<div><strong>%s</strong> (#%lld)",
                 (long long)post_id,
-                author ? author : "Anonymous",
+                escaped_author ? escaped_author : "Anonymous",
                 (long long)post_id);
             
             if (reply_to > 0 && reply_to_id > 0) {
@@ -529,20 +587,29 @@ http_response_t *thread_view_handler(http_request_t *req) {
                 (long long)post_id);
             
             if (reply_to > 0 && reply_to_id > 0 && reply_to_content) {
+                char *escaped_reply_author = render_escape_html(reply_to_author ? reply_to_author : "Anonymous");
+                char *escaped_reply_content = render_escape_html(reply_to_content);
+                
                 len += snprintf(html + len, 32768 - len,
                     "<div class=\"quoted-post\" id=\"quote-%lld\">\n"
                     "<strong>%s</strong> (#%lld): %s\n"
                     "</div>\n",
                     (long long)reply_to_id,
-                    reply_to_author ? reply_to_author : "Anonymous",
+                    escaped_reply_author ? escaped_reply_author : "Anonymous",
                     (long long)reply_to_id,
-                    reply_to_content);
+                    escaped_reply_content ? escaped_reply_content : "");
+                
+                free(escaped_reply_author);
+                free(escaped_reply_content);
             }
             
             len += snprintf(html + len, 32768 - len,
                 "<p>%s</p>\n"
                 "</div>\n",
-                content ? content : "");
+                escaped_content ? escaped_content : "");
+            
+            free(escaped_author);
+            free(escaped_content);
         }
         db_finalize(stmt);
     }
@@ -561,17 +628,23 @@ http_response_t *thread_view_handler(http_request_t *req) {
         (long long)thread_id);
     
     for (int i = 0; i < kaomoji_categories_count && len < 32768 - 1024; i++) {
+        char *escaped_title = render_escape_html(kaomoji_categories[i].title);
         len += snprintf(html + len, 32768 - len,
             "<div class=\"kaomoji-category\">\n"
             "<div class=\"kaomoji-title\">%s</div>\n"
             "<div class=\"kaomoji-items\">\n",
-            kaomoji_categories[i].title);
+            escaped_title ? escaped_title : kaomoji_categories[i].title);
+        free(escaped_title);
         
         for (int j = 0; j < kaomoji_categories[i].count && len < 32768 - 512; j++) {
+            char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
+            char *escaped_html = render_escape_html(kaomoji_categories[i].items[j]);
             len += snprintf(html + len, 32768 - len,
                 "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
-                kaomoji_categories[i].items[j],
-                kaomoji_categories[i].items[j]);
+                escaped_js ? escaped_js : kaomoji_categories[i].items[j],
+                escaped_html ? escaped_html : kaomoji_categories[i].items[j]);
+            free(escaped_js);
+            free(escaped_html);
         }
         
         len += snprintf(html + len, 32768 - len,
