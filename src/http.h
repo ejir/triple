@@ -21,7 +21,7 @@ typedef struct {
 } http_response_t;
 
 int http_server_init(uint16_t port);
-void http_server_run(void);
+void http_server_run(volatile int *keep_running);
 void http_server_shutdown(void);
 
 http_response_t *http_response_create(int status_code, const char *content_type, const char *body, size_t body_len);

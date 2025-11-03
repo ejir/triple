@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     printf("Listening on: http://localhost:%u\n", port);
     printf("Press Ctrl+C to stop\n\n");
     
-    http_server_run();
+    http_server_run(&keep_running);
     
     printf("\nShutting down...\n");
     http_server_shutdown();
