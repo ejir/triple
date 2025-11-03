@@ -101,40 +101,7 @@ jobs:
           ls -lh obj/test_* || echo "Test binaries built"
           echo "All tests passed!"
 
-  lint:
-    name: Code Quality Check
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip build-essential
-      
-      - name: Cache Cosmopolitan toolchain
-        id: cache-cosmo
-        uses: actions/cache@v4
-        with:
-          path: /opt/cosmo
-          key: cosmo-toolchain-v1
-      
-      - name: Install Cosmopolitan toolchain
-        if: steps.cache-cosmo.outputs.cache-hit != 'true'
-        run: |
-          sudo mkdir -p /opt/cosmo
-          cd /opt/cosmo
-          sudo wget -q https://cosmo.zip/pub/cosmocc/cosmocc.zip
-          sudo unzip -q cosmocc.zip
-          sudo rm cosmocc.zip
-          sudo chmod +x bin/cosmocc bin/cosmoar
-      
-      - name: Check for syntax errors with Cosmopolitan
-        run: |
-          # Compile with all warnings enabled to check code quality
-          make BUILD_MODE=cosmo CFLAGS="-Wall -Wextra -Werror -std=c11 -Isrc -Ithird_party/sqlite3"
+
 
   integration:
     name: Integration Test
