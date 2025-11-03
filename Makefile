@@ -58,6 +58,18 @@ $(OBJ_DIR)/test_db: $(TEST_DIR)/test_db.c $(OBJ_DIR)/db.o $(SQLITE3_OBJ) | $(OBJ
 	@echo "Compiling test $<..."
 	$(CC) $(CFLAGS) $< $(OBJ_DIR)/db.o $(SQLITE3_OBJ) $(LDFLAGS) -o $@
 
+$(OBJ_DIR)/test_cosmopolitan_compat: $(TEST_DIR)/test_cosmopolitan_compat.c | $(OBJ_DIR)
+	@echo "Compiling test $<..."
+	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
+
+$(OBJ_DIR)/test_modules_compat: $(TEST_DIR)/test_modules_compat.c $(OBJ_DIR)/http.o $(OBJ_DIR)/router.o $(OBJ_DIR)/db.o $(OBJ_DIR)/render.o $(SQLITE3_OBJ) | $(OBJ_DIR)
+	@echo "Compiling test $<..."
+	$(CC) $(CFLAGS) $< $(OBJ_DIR)/http.o $(OBJ_DIR)/router.o $(OBJ_DIR)/db.o $(OBJ_DIR)/render.o $(SQLITE3_OBJ) $(LDFLAGS) -o $@
+
+$(OBJ_DIR)/test_ape_features: $(TEST_DIR)/test_ape_features.c | $(OBJ_DIR)
+	@echo "Compiling test $<..."
+	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
+
 test: $(TEST_BINS)
 	@echo "Running tests..."
 	@for test in $(TEST_BINS); do \
@@ -68,7 +80,7 @@ test: $(TEST_BINS)
 
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -rf $(OBJ_DIR) $(TARGET) app app.com *.db
+	rm -rf $(OBJ_DIR) $(TARGET) app app.com *.db *.tmp
 	@echo "Clean complete"
 
 run: $(TARGET)
@@ -98,7 +110,7 @@ help:
 	@echo "  make                        - Build APE with Cosmopolitan"
 	@echo "  make BUILD_MODE=gcc         - Build with GCC"
 	@echo "  make dev                    - Quick development build"
-	@echo "  make test                   - Run SQLite3 tests"
+	@echo "  make test                   - Run all tests"
 	@echo ""
 	@echo "Output:"
 	@echo "  app.com (cosmo)  - Actually Portable Executable"
