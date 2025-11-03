@@ -1,147 +1,149 @@
 # GitHub Actions CI/CD
 
-This directory contains GitHub Actions workflow files for continuous integration and deployment.
+此目录包含用于持续集成和部署的GitHub Actions工作流文件。
 
-## Workflows
+## 工作流
 
-### CI Build and Test (`ci.yml`)
+### CI 构建和测试 (`ci.yml`)
 
-Automated build and testing pipeline that runs on every push and pull request.
+使用Cosmopolitan工具链的自动化构建和测试管道，在每次推送和拉取请求时运行。
 
-#### Jobs
+#### 任务
 
-1. **build-gcc** - Build with GCC compiler
-   - Uses standard GCC for Linux
-   - Creates `app` binary for development testing
-   - Uploads artifact for use in subsequent jobs
+1. **build** - 使用Cosmopolitan构建
+   - 使用Cosmopolitan Libc工具链
+   - 创建Actually Portable Executable（APE）：`app.com`
+   - 缓存工具链以加快后续构建
+   - 生成跨平台二进制文件
 
-2. **build-cosmo** - Build with Cosmopolitan
-   - Uses Cosmopolitan Libc toolchain
-   - Creates Actually Portable Executable (`app.com`)
-   - Caches toolchain for faster subsequent builds
-   - Produces cross-platform binary
+2. **test** - 运行测试
+   - 使用Cosmopolitan构建执行所有测试套件
+   - 验证跨平台兼容性
+   - 确保所有测试通过
 
-3. **test-gcc** - Run tests with GCC build
-   - Executes all test suites
-   - Validates functionality on Linux
+3. **lint** - 代码质量检查
+   - 使用严格的警告进行编译（`-Wall -Wextra -Werror`）
+   - 使用Cosmopolitan编译器检查代码质量
+   - 确保代码符合质量标准
 
-4. **test-cosmo** - Run tests with Cosmopolitan build
-   - Executes all test suites with APE
-   - Validates cross-platform compatibility
+4. **integration** - 集成测试
+   - 启动APE应用程序
+   - 测试HTTP端点
+   - 验证服务器功能
+   - 收集应用程序日志
 
-5. **lint** - Code quality checks
-   - Compiles with strict warnings (`-Wall -Wextra -Werror`)
-   - Ensures code meets quality standards
+5. **release** - 创建发布制品
+   - 仅在main分支或标签上运行
+   - 打包Cosmopolitan APE构建
+   - 生成校验和
+   - 创建可发布的制品
 
-6. **integration** - Integration testing
-   - Starts the application
-   - Tests HTTP endpoints
-   - Validates server functionality
+## 触发条件
 
-7. **release** - Create release artifacts
-   - Runs only on main branch or tags
-   - Bundles both GCC and Cosmopolitan builds
-   - Generates checksums
-   - Creates release-ready artifacts
+CI管道在以下情况下运行：
+- 推送到 `main`、`develop` 或 `github-actions-ci-build-test` 分支
+- 针对 `main` 或 `develop` 分支的拉取请求
+- 手动工作流调度（可从GitHub UI手动触发）
 
-## Triggers
+## 制品
 
-The CI pipeline runs on:
-- Push to `main`, `develop`, or `github-actions-ci-build-test` branches
-- Pull requests to `main` or `develop` branches
-- Manual workflow dispatch
+工作流生成以下制品：
 
-## Artifacts
+- **app-cosmopolitan-ape** - Actually Portable Executable（30天保留期）
+- **integration-test-logs** - 集成测试的应用程序日志（7天保留期）
+- **release-artifacts** - 带校验和的发布包（90天保留期）
 
-The workflow produces several artifacts:
+## 缓存
 
-- **app-gcc-build** - Linux binary built with GCC (7 days retention)
-- **app-cosmopolitan-ape** - Actually Portable Executable (30 days retention)
-- **integration-test-logs** - Application logs from integration tests (7 days retention)
-- **release-artifacts** - Release bundle with checksums (90 days retention)
+工作流缓存Cosmopolitan工具链以加快构建速度：
+- 缓存键：`cosmo-toolchain-v1`
+- 位置：`/opt/cosmo`
 
-## Caching
+## 本地测试
 
-The workflow caches the Cosmopolitan toolchain to speed up builds:
-- Cache key: `cosmo-toolchain-v1`
-- Location: `/opt/cosmo`
+要在本地测试工作流，您可以运行相同的命令：
 
-## Local Testing
-
-To test the workflow locally, you can run the same commands:
-
-### GCC Build and Test
-```bash
-make BUILD_MODE=gcc
-make BUILD_MODE=gcc test
-```
-
-### Cosmopolitan Build and Test
+### Cosmopolitan 构建和测试
 ```bash
 make BUILD_MODE=cosmo
 make BUILD_MODE=cosmo test
 ```
 
-### Lint Check
+### 代码质量检查
 ```bash
-make BUILD_MODE=gcc CFLAGS="-Wall -Wextra -Werror -std=c11 -Isrc -Ithird_party/sqlite3"
+make BUILD_MODE=cosmo CFLAGS="-Wall -Wextra -Werror -std=c11 -Isrc -Ithird_party/sqlite3"
 ```
 
-## Customization
+### 清理构建制品
+```bash
+make clean
+```
 
-### Changing Build Configuration
+## 自定义
 
-Edit the workflow file to modify:
-- Compiler flags
-- Test timeouts
-- Artifact retention periods
-- Branch triggers
+### 更改构建配置
 
-### Adding New Tests
+编辑工作流文件以修改：
+- 编译器标志
+- 测试超时
+- 制品保留期
+- 分支触发器
 
-Tests are automatically discovered from the `tests/` directory by the Makefile.
+### 添加新测试
 
-### Modifying Release Process
+测试会从 `tests/` 目录自动发现并由Makefile构建。
 
-The release job can be customized to:
-- Create GitHub releases automatically
-- Deploy to servers
-- Publish to package registries
-- Generate release notes
+### 修改发布流程
 
-## Troubleshooting
+可以自定义发布任务以：
+- 自动创建GitHub发布
+- 部署到服务器
+- 发布到包注册表
+- 生成发布说明
 
-### Cosmopolitan Installation Fails
+## 故障排除
 
-If the Cosmopolitan toolchain download fails:
-1. Check https://cosmo.zip/pub/cosmos/bin/ for available files
-2. Update the download URLs in the workflow
-3. Invalidate the cache by changing the cache key
+### Cosmopolitan安装失败
 
-### Tests Fail
+如果Cosmopolitan工具链下载失败：
+1. 检查 https://cosmo.zip/pub/cosmos/bin/ 是否可访问
+2. 更新工作流中的下载URL
+3. 通过更改缓存键使缓存失效
 
-Check the test logs in the Actions tab:
-1. Click on the failed job
-2. Expand the "Build and run tests" step
-3. Review error messages
+### 测试失败
 
-### Integration Test Timeout
+在Actions选项卡中检查测试日志：
+1. 点击失败的任务
+2. 展开"Build and run tests"步骤
+3. 查看错误消息
 
-If the application doesn't start in time:
-1. Increase the sleep duration in the "Wait for application to start" step
-2. Check application logs artifact
-3. Verify port 8080 is not in use
+### 集成测试超时
 
-## Best Practices
+如果应用程序未及时启动：
+1. 增加"Wait for application to start"步骤中的休眠时间
+2. 检查应用程序日志制品
+3. 验证端口8080未被占用
 
-1. **Always run tests locally** before pushing
-2. **Review artifacts** to ensure builds are correct
-3. **Monitor cache usage** to optimize build times
-4. **Update dependencies** in the workflow regularly
-5. **Keep workflows simple** and maintainable
+## 最佳实践
 
-## References
+1. **始终在本地运行测试** 然后再推送
+2. **检查制品** 以确保构建正确
+3. **监控缓存使用** 以优化构建时间
+4. **定期更新依赖项** 在工作流中
+5. **保持工作流简单** 和可维护
 
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+## 跨平台支持
+
+Cosmopolitan构建创建的Actually Portable Executable可以在以下平台上运行：
+- Linux (x86_64)
+- Windows
+- macOS
+- FreeBSD
+- OpenBSD
+- NetBSD
+
+## 参考资料
+
+- [GitHub Actions 文档](https://docs.github.com/zh/actions)
 - [Cosmopolitan Libc](https://github.com/jart/cosmopolitan)
-- [Project Build Documentation](../../README.md)
+- [项目构建文档](../../README.md)
