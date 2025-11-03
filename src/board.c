@@ -7,6 +7,32 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
+
+static int hex_to_int(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    return 0;
+}
+
+static void url_decode(char *dst, const char *src, size_t dst_size) {
+    size_t i = 0, j = 0;
+    while (src[i] && j < dst_size - 1) {
+        if (src[i] == '%' && src[i+1] && src[i+2]) {
+            int high = hex_to_int(src[i+1]);
+            int low = hex_to_int(src[i+2]);
+            dst[j++] = (char)((high << 4) | low);
+            i += 3;
+        } else if (src[i] == '+') {
+            dst[j++] = ' ';
+            i++;
+        } else {
+            dst[j++] = src[i++];
+        }
+    }
+    dst[j] = '\0';
+}
 
 void board_init(void) {
     printf("Board module initialized\n");
@@ -30,6 +56,7 @@ void board_init(void) {
 void board_register_routes(void) {
     router_add_route("GET", "/", board_list_handler);
     router_add_route("GET", "/board", board_view_handler);
+    router_add_route("POST", "/board/create", board_create_handler);
     router_add_route("GET", "/thread", thread_view_handler);
     router_add_route("POST", "/thread", thread_create_handler);
     router_add_route("POST", "/post", post_create_handler);
@@ -46,7 +73,10 @@ http_response_t *board_list_handler(http_request_t *req) {
     int len = snprintf(html, 8192,
         "<!DOCTYPE html>\n"
         "<html>\n"
-        "<head><title>Boards</title></head>\n"
+        "<head>\n"
+        "<meta charset=\"UTF-8\">\n"
+        "<title>Boards</title>\n"
+        "</head>\n"
         "<body>\n"
         "<h1>Message Boards</h1>\n"
         "<ul>\n");
@@ -87,6 +117,88 @@ http_response_t *board_list_handler(http_request_t *req) {
     return response;
 }
 
+http_response_t *board_create_handler(http_request_t *req) {
+    if (!req->body) {
+        const char *html = "<html><body><h1>Error: No form data</h1></body></html>";
+        return http_response_create(400, "text/html", html, strlen(html));
+    }
+    
+    char name[256] = {0};
+    char title[256] = {0};
+    char description[1024] = {0};
+    
+    char *body_copy = strdup(req->body);
+    if (!body_copy) {
+        const char *html = "<html><body><h1>Error: Out of memory</h1></body></html>";
+        return http_response_create(500, "text/html", html, strlen(html));
+    }
+    
+    char *token = strtok(body_copy, "&");
+    while (token) {
+        char *eq = strchr(token, '=');
+        if (eq) {
+            *eq = '\0';
+            char *key = token;
+            char *value = eq + 1;
+            
+            if (strcmp(key, "name") == 0) {
+                url_decode(name, value, sizeof(name));
+            } else if (strcmp(key, "title") == 0) {
+                url_decode(title, value, sizeof(title));
+            } else if (strcmp(key, "description") == 0) {
+                url_decode(description, value, sizeof(description));
+            }
+        }
+        token = strtok(NULL, "&");
+    }
+    free(body_copy);
+    
+    if (strlen(name) == 0 || strlen(title) == 0) {
+        const char *html = "<html><body><h1>Error: Name and title are required</h1>"
+                          "<a href=\"/\">Back to boards</a></body></html>";
+        return http_response_create(400, "text/html", html, strlen(html));
+    }
+    
+    sqlite3_stmt *stmt = db_prepare(
+        "INSERT INTO boards (name, title, description) VALUES (?, ?, ?)"
+    );
+    if (!stmt) {
+        const char *html = "<html><body><h1>Error: Failed to create board</h1></body></html>";
+        return http_response_create(500, "text/html", html, strlen(html));
+    }
+    
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, title, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, description, -1, SQLITE_TRANSIENT);
+    
+    int rc = db_step(stmt);
+    int64_t board_id = sqlite3_last_insert_rowid(db_get_connection());
+    db_finalize(stmt);
+    
+    if (rc != SQLITE_DONE) {
+        const char *html = "<html><body><h1>Error: Failed to create board</h1></body></html>";
+        return http_response_create(500, "text/html", html, strlen(html));
+    }
+    
+    char *html = malloc(512);
+    if (!html) {
+        const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
+        return http_response_create(500, "text/html", err, strlen(err));
+    }
+    
+    int len = snprintf(html, 512,
+        "<html><body><h1>Board Created!</h1>"
+        "<p>Board '%s' has been created.</p>"
+        "<a href=\"/board?id=%lld\">View Board</a> | "
+        "<a href=\"/\">Back to All Boards</a></body></html>",
+        title,
+        (long long)board_id);
+    
+    http_response_t *response = http_response_create(200, "text/html", html, len);
+    free(html);
+    return response;
+}
+
 http_response_t *board_view_handler(http_request_t *req) {
     int64_t board_id = 1;
     if (req->query_string) {
@@ -109,7 +221,10 @@ http_response_t *board_view_handler(http_request_t *req) {
     int len = snprintf(html, 16384,
         "<!DOCTYPE html>\n"
         "<html>\n"
-        "<head><title>%s</title></head>\n"
+        "<head>\n"
+        "<meta charset=\"UTF-8\">\n"
+        "<title>%s</title>\n"
+        "</head>\n"
         "<body>\n"
         "<h1>/%s/ - %s</h1>\n"
         "<p>%s</p>\n"
@@ -189,7 +304,10 @@ http_response_t *thread_view_handler(http_request_t *req) {
     int len = snprintf(html, 32768,
         "<!DOCTYPE html>\n"
         "<html>\n"
-        "<head><title>%s</title></head>\n"
+        "<head>\n"
+        "<meta charset=\"UTF-8\">\n"
+        "<title>%s</title>\n"
+        "</head>\n"
         "<body>\n"
         "<h1>%s</h1>\n"
         "<a href=\"/board?id=%lld\">Back to board</a> | <a href=\"/\">All boards</a><hr>\n"
@@ -258,6 +376,7 @@ http_response_t *thread_create_handler(http_request_t *req) {
     char subject[256] = {0};
     char author[128] = "Anonymous";
     char content[2048] = {0};
+    char decoded_value[2048];
     
     char *body_copy = strdup(req->body);
     if (!body_copy) {
@@ -276,11 +395,14 @@ http_response_t *thread_create_handler(http_request_t *req) {
             if (strcmp(key, "board_id") == 0) {
                 board_id = atoll(value);
             } else if (strcmp(key, "subject") == 0) {
-                strncpy(subject, value, sizeof(subject) - 1);
+                url_decode(subject, value, sizeof(subject));
             } else if (strcmp(key, "author") == 0 && strlen(value) > 0) {
-                strncpy(author, value, sizeof(author) - 1);
+                url_decode(decoded_value, value, sizeof(decoded_value));
+                if (strlen(decoded_value) > 0) {
+                    strncpy(author, decoded_value, sizeof(author) - 1);
+                }
             } else if (strcmp(key, "content") == 0) {
-                strncpy(content, value, sizeof(content) - 1);
+                url_decode(content, value, sizeof(content));
             }
         }
         token = strtok(NULL, "&");
@@ -346,6 +468,7 @@ http_response_t *post_create_handler(http_request_t *req) {
     int64_t thread_id = 0;
     char author[128] = "Anonymous";
     char content[2048] = {0};
+    char decoded_value[2048];
     
     char *body_copy = strdup(req->body);
     if (!body_copy) {
@@ -364,9 +487,12 @@ http_response_t *post_create_handler(http_request_t *req) {
             if (strcmp(key, "thread_id") == 0) {
                 thread_id = atoll(value);
             } else if (strcmp(key, "author") == 0 && strlen(value) > 0) {
-                strncpy(author, value, sizeof(author) - 1);
+                url_decode(decoded_value, value, sizeof(decoded_value));
+                if (strlen(decoded_value) > 0) {
+                    strncpy(author, decoded_value, sizeof(author) - 1);
+                }
             } else if (strcmp(key, "content") == 0) {
-                strncpy(content, value, sizeof(content) - 1);
+                url_decode(content, value, sizeof(content));
             }
         }
         token = strtok(NULL, "&");

@@ -127,6 +127,14 @@ static void send_response(int client_fd, http_response_t *response) {
     
     const char *status_msg = get_status_message(response->status_code);
     
+    const char *content_type = response->content_type ? response->content_type : "text/plain";
+    char content_type_with_charset[256];
+    
+    if (strstr(content_type, "text/html") && !strstr(content_type, "charset")) {
+        snprintf(content_type_with_charset, sizeof(content_type_with_charset), "%s; charset=utf-8", content_type);
+        content_type = content_type_with_charset;
+    }
+    
     header_len = snprintf(header, sizeof(header),
                          "HTTP/1.1 %d %s\r\n"
                          "Content-Type: %s\r\n"
@@ -135,7 +143,7 @@ static void send_response(int client_fd, http_response_t *response) {
                          "\r\n",
                          response->status_code,
                          status_msg,
-                         response->content_type ? response->content_type : "text/plain",
+                         content_type,
                          response->body_len);
     
     write(client_fd, header, header_len);
