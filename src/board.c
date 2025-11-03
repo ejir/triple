@@ -695,6 +695,8 @@ http_response_t *board_view_handler(http_request_t *req) {
 }
 
 http_response_t *thread_view_handler(http_request_t *req) {
+    language_t lang = i18n_get_language(req);
+    
     int64_t thread_id = 1;
     if (req->query_string) {
         sscanf(req->query_string, "id=%lld", (long long *)&thread_id);
@@ -702,11 +704,15 @@ http_response_t *thread_view_handler(http_request_t *req) {
     
     thread_t *thread = thread_get_by_id(thread_id);
     if (!thread) {
-        const char *html = "<html><body><h1>Thread Not Found</h1><a href=\"/\">Back to boards</a></body></html>";
-        return http_response_create(404, "text/html", html, strlen(html));
+        char error_html[512];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s</h1><a href=\"/\">%s</a></body></html>",
+            i18n_get(lang, "thread_not_found"),
+            i18n_get(lang, "back_to_boards"));
+        return http_response_create(404, "text/html", error_html, strlen(error_html));
     }
     
-    char *html = malloc(32768);
+    char *html = malloc(65536);
     if (!html) {
         thread_free(thread);
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
@@ -718,7 +724,7 @@ http_response_t *thread_view_handler(http_request_t *req) {
     char *escaped_author = render_escape_html(thread->author ? thread->author : "Anonymous");
     char *escaped_content = render_escape_html(thread->content ? thread->content : "No content");
     
-    int len = snprintf(html, 32768,
+    int len = snprintf(html, 65536,
         "<!DOCTYPE html>\n"
         "<html>\n"
         "<head>\n"
@@ -733,7 +739,7 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "  --background: #fafafa; --surface: #ffffff; --error: #f44336;\n"
         "}\n"
         "* { box-sizing: border-box; margin: 0; padding: 0; }\n"
-        "body { font-family: 'Roboto', 'Segoe UI', Arial, sans-serif; background: var(--background);\n"
+        "body { font-family: 'Roboto', 'Segoe UI', Arial, sans-serif, 'Microsoft YaHei', 'SimHei'; background: var(--background);\n"
         "  color: var(--text-primary); line-height: 1.6; padding: 16px; }\n"
         ".container { max-width: 1200px; margin: 0 auto; }\n"
         ".card { background: var(--surface); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n"
@@ -827,25 +833,41 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "  textarea.selectionStart = textarea.selectionEnd = start + kaomoji.length;\n"
         "  textarea.focus();\n"
         "}\n"
+        "function setLanguage(lang) {\n"
+        "  document.cookie = 'lang=' + lang + '; path=/; max-age=31536000';\n"
+        "  window.location.href = window.location.pathname + '?id=%lld&lang=' + lang;\n"
+        "}\n"
         "</script>\n"
         "</head>\n"
         "<body>\n"
         "<div class=\"container\">\n"
         "<div class=\"header-card card\">\n"
-        "<h1>%s</h1>\n"
-        "<a href=\"/board?id=%lld\" class=\"nav-link\">← Back to board</a>\n"
-        "<a href=\"/\" class=\"nav-link\">🏠 All boards</a>\n"
+        "<h1 style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;\">\n"
+        "  <span>%s</span>\n"
+        "  <span style=\"font-size:0.875rem;font-weight:normal;\">\n"
+        "    <a href=\"#\" onclick=\"setLanguage('en'); return false;\" style=\"color:rgba(255,255,255,0.9);text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,0.5);border-radius:4px;margin-left:8px;%s\">English</a>\n"
+        "    <a href=\"#\" onclick=\"setLanguage('zh-cn'); return false;\" style=\"color:rgba(255,255,255,0.9);text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,0.5);border-radius:4px;margin-left:8px;%s\">中文</a>\n"
+        "  </span>\n"
+        "</h1>\n"
+        "<a href=\"/board?id=%lld\" class=\"nav-link\">← %s</a>\n"
+        "<a href=\"/\" class=\"nav-link\">🏠 %s</a>\n"
         "</div>\n"
         "<div class=\"op-post\">\n"
         "<div class=\"author\">👤 %s</div>\n"
         "<div class=\"content\">%s</div>\n"
         "</div>\n"
-        "<h2>💬 Replies</h2>\n",
+        "<h2>💬 %s</h2>\n",
+        (long long)thread_id,
         escaped_subject_title ? escaped_subject_title : "Thread",
         escaped_subject_h1 ? escaped_subject_h1 : "Thread",
+        (lang == LANG_EN ? "background:rgba(255,255,255,0.2);" : ""),
+        (lang == LANG_ZH_CN ? "background:rgba(255,255,255,0.2);" : ""),
         (long long)thread->board_id,
-        escaped_author ? escaped_author : "Anonymous",
-        escaped_content ? escaped_content : "No content");
+        i18n_get(lang, "back_to_board"),
+        i18n_get(lang, "all_boards"),
+        escaped_author ? escaped_author : i18n_get(lang, "anonymous"),
+        escaped_content ? escaped_content : "No content",
+        i18n_get(lang, "posts"));
     
     free(escaped_subject_title);
     free(escaped_subject_h1);
@@ -892,11 +914,12 @@ http_response_t *thread_view_handler(http_request_t *req) {
                     (long long)reply_to_id);
             }
             
-            len += snprintf(html + len, 32768 - len,
+            len += snprintf(html + len, 65536 - len,
                 "</div>\n"
-                "<button class=\"reply-btn\" onclick=\"replyToPost(%lld)\">↩ Reply</button>\n"
+                "<button class=\"reply-btn\" onclick=\"replyToPost(%lld)\">↩ %s</button>\n"
                 "</div>\n",
-                (long long)post_id);
+                (long long)post_id,
+                i18n_get(lang, "reply"));
             
             if (reply_to > 0 && reply_to_id > 0 && reply_to_content) {
                 char *escaped_reply_author = render_escape_html(reply_to_author ? reply_to_author : "Anonymous");
@@ -926,38 +949,43 @@ http_response_t *thread_view_handler(http_request_t *req) {
         db_finalize(stmt);
     }
     
-    len += snprintf(html + len, 32768 - len,
+    len += snprintf(html + len, 65536 - len,
         "<div class=\"card\" style=\"margin-top:24px;\">\n"
-        "<h2>✏️ Reply to Thread</h2>\n"
+        "<h2>✏️ %s</h2>\n"
         "<form id=\"reply-form\" method=\"POST\" action=\"/post\">\n"
         "<input type=\"hidden\" name=\"thread_id\" value=\"%lld\">\n"
         "<input type=\"hidden\" id=\"reply_to\" name=\"reply_to\" value=\"\">\n"
         "<div class=\"form-group\">\n"
-        "<label>Name</label>\n"
-        "<input type=\"text\" name=\"author\" placeholder=\"Anonymous\">\n"
+        "<label>%s</label>\n"
+        "<input type=\"text\" name=\"author\" placeholder=\"%s\">\n"
         "</div>\n"
         "<div class=\"form-group\">\n"
-        "<label>Content</label>\n"
+        "<label>%s</label>\n"
         "<textarea id=\"content\" name=\"content\" required></textarea>\n"
         "</div>\n"
         "<div class=\"kaomoji-picker\">\n"
-        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">😊 颜文字</button>\n"
+        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">😊 %s</button>\n"
         "<div id=\"kaomoji-content\" class=\"kaomoji-content\">\n",
-        (long long)thread_id);
+        i18n_get(lang, "reply"),
+        (long long)thread_id,
+        i18n_get(lang, "name"),
+        i18n_get(lang, "anonymous"),
+        i18n_get(lang, "content"),
+        i18n_get(lang, "kaomoji"));
     
-    for (int i = 0; i < kaomoji_categories_count && len < 32768 - 1024; i++) {
+    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
         char *escaped_title = render_escape_html(kaomoji_categories[i].title);
-        len += snprintf(html + len, 32768 - len,
+        len += snprintf(html + len, 65536 - len,
             "<div class=\"kaomoji-category\">\n"
             "<div class=\"kaomoji-title\">%s</div>\n"
             "<div class=\"kaomoji-items\">\n",
             escaped_title ? escaped_title : kaomoji_categories[i].title);
         free(escaped_title);
         
-        for (int j = 0; j < kaomoji_categories[i].count && len < 32768 - 512; j++) {
+        for (int j = 0; j < kaomoji_categories[i].count && len < 65536 - 512; j++) {
             char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
             char *escaped_html = render_escape_html(kaomoji_categories[i].items[j]);
-            len += snprintf(html + len, 32768 - len,
+            len += snprintf(html + len, 65536 - len,
                 "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
                 escaped_js ? escaped_js : kaomoji_categories[i].items[j],
                 escaped_html ? escaped_html : kaomoji_categories[i].items[j]);
@@ -965,20 +993,21 @@ http_response_t *thread_view_handler(http_request_t *req) {
             free(escaped_html);
         }
         
-        len += snprintf(html + len, 32768 - len,
+        len += snprintf(html + len, 65536 - len,
             "</div>\n"
             "</div>\n");
     }
     
-    len += snprintf(html + len, 32768 - len,
+    len += snprintf(html + len, 65536 - len,
         "</div>\n"
         "</div>\n"
-        "<button type=\"submit\" class=\"btn\">Post Reply</button>\n"
+        "<button type=\"submit\" class=\"btn\">%s</button>\n"
         "</form>\n"
         "</div>\n"
         "</div>\n"
         "</body>\n"
-        "</html>");
+        "</html>",
+        i18n_get(lang, "post_reply"));
     
     thread_free(thread);
     http_response_t *response = http_response_create(200, "text/html", html, len);
