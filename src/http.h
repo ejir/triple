@@ -11,6 +11,7 @@ typedef struct {
     const char *body;
     size_t body_len;
     const char *content_type;
+    const char *cookies;
 } http_request_t;
 
 typedef struct {
@@ -18,6 +19,7 @@ typedef struct {
     const char *content_type;
     char *body;
     size_t body_len;
+    char *set_cookie;
 } http_response_t;
 
 int http_server_init(uint16_t port);
