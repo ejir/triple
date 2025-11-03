@@ -1,0 +1,67 @@
+# Build outputs
+*.com
+*.o
+*.a
+*.so
+*.exe
+*.dbg
+obj/
+build/
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Upload directories
+uploads/
+files/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Debug files
+*.dSYM/
+*.pdb
+
+# Core dumps
+core
+core.*
+
+# Environment files
+.env
+.env.local
+
+# Test coverage
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Generated documentation
+docs/html/
+docs/latex/
+
+# Package manager
+node_modules/
+vendor/
+
+# OS specific
+Thumbs.db
+.Spotlight-V100
+.Trashes
