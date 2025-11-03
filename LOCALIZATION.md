@@ -110,13 +110,13 @@ The current version determines language by priority:
 
 目前已完成本地化的页面：
 - ✅ 首页/版块列表 (Home/Board List)
-- ⏳ 版块详情页 (Board Details) - 部分完成
+- ✅ 版块详情页 (Board Details) - 包括表单、导航和标题
 - ⏳ 主题详情页 (Thread Details) - 待完成
 - ⏳ 管理面板 (Admin Panel) - 待完成
 
 Currently localized pages:
 - ✅ Home/Board List
-- ⏳ Board Details - Partially complete
+- ✅ Board Details - Including forms, navigation and headers
 - ⏳ Thread Details - To be done
 - ⏳ Admin Panel - To be done
 

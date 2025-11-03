@@ -439,6 +439,8 @@ http_response_t *board_create_handler(http_request_t *req) {
 }
 
 http_response_t *board_view_handler(http_request_t *req) {
+    language_t lang = i18n_get_language(req);
+    
     int64_t board_id = 1;
     if (req->query_string) {
         sscanf(req->query_string, "id=%lld", (long long *)&board_id);
@@ -446,11 +448,15 @@ http_response_t *board_view_handler(http_request_t *req) {
     
     board_t *board = board_get_by_id(board_id);
     if (!board) {
-        const char *html = "<html><body><h1>Board Not Found</h1><a href=\"/\">Back to boards</a></body></html>";
-        return http_response_create(404, "text/html", html, strlen(html));
+        char error_html[512];
+        snprintf(error_html, sizeof(error_html),
+            "<html><body><h1>%s</h1><a href=\"/\">%s</a></body></html>",
+            i18n_get(lang, "board_not_found"),
+            i18n_get(lang, "back_to_boards"));
+        return http_response_create(404, "text/html", error_html, strlen(error_html));
     }
     
-    char *html = malloc(32768);
+    char *html = malloc(65536);
     if (!html) {
         board_free(board);
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
@@ -462,7 +468,7 @@ http_response_t *board_view_handler(http_request_t *req) {
     char *escaped_name_body = render_escape_html(board->name ? board->name : "Board");
     char *escaped_desc = render_escape_html(board->description ? board->description : "No description");
     
-    int len = snprintf(html, 32768,
+    int len = snprintf(html, 65536,
         "<!DOCTYPE html>\n"
         "<html>\n"
         "<head>\n"
@@ -476,7 +482,7 @@ http_response_t *board_view_handler(http_request_t *req) {
         "  --divider: rgba(0,0,0,0.12); --background: #fafafa; --surface: #ffffff; --error: #f44336;\n"
         "}\n"
         "* { box-sizing: border-box; margin: 0; padding: 0; }\n"
-        "body { font-family: 'Roboto', 'Segoe UI', Arial, sans-serif; background: var(--background);\n"
+        "body { font-family: 'Roboto', 'Segoe UI', Arial, sans-serif, 'Microsoft YaHei', 'SimHei'; background: var(--background);\n"
         "  color: var(--text-primary); line-height: 1.6; padding: 16px; }\n"
         ".container { max-width: 1200px; margin: 0 auto; }\n"
         ".card { background: var(--surface); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n"
@@ -549,21 +555,36 @@ http_response_t *board_view_handler(http_request_t *req) {
         "  textarea.selectionStart = textarea.selectionEnd = start + kaomoji.length;\n"
         "  textarea.focus();\n"
         "}\n"
+        "function setLanguage(lang) {\n"
+        "  document.cookie = 'lang=' + lang + '; path=/; max-age=31536000';\n"
+        "  window.location.href = window.location.pathname + '?id=%lld&lang=' + lang;\n"
+        "}\n"
         "</script>\n"
         "</head>\n"
         "<body>\n"
         "<div class=\"container\">\n"
         "<div class=\"header-card card\">\n"
-        "<h1>/%s/ - %s</h1>\n"
+        "<h1 style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;\">\n"
+        "  <span>/%s/ - %s</span>\n"
+        "  <span style=\"font-size:0.875rem;font-weight:normal;\">\n"
+        "    <a href=\"#\" onclick=\"setLanguage('en'); return false;\" style=\"color:rgba(255,255,255,0.9);text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,0.5);border-radius:4px;margin-left:8px;%s\">English</a>\n"
+        "    <a href=\"#\" onclick=\"setLanguage('zh-cn'); return false;\" style=\"color:rgba(255,255,255,0.9);text-decoration:none;padding:6px 12px;border:1px solid rgba(255,255,255,0.5);border-radius:4px;margin-left:8px;%s\">中文</a>\n"
+        "  </span>\n"
+        "</h1>\n"
         "<p>%s</p>\n"
-        "<a href=\"/\" class=\"nav-link\">← Back to boards</a>\n"
+        "<a href=\"/\" class=\"nav-link\">← %s</a>\n"
         "</div>\n"
-        "<h2>💬 Threads</h2>\n"
+        "<h2>💬 %s</h2>\n"
         "<ul class=\"thread-list\">\n",
         escaped_name_title ? escaped_name_title : "Board",
+        (long long)board_id,
         escaped_name_h1 ? escaped_name_h1 : "board",
         escaped_name_body ? escaped_name_body : "Board",
-        escaped_desc ? escaped_desc : "No description");
+        (lang == LANG_EN ? "background:rgba(255,255,255,0.2);" : ""),
+        (lang == LANG_ZH_CN ? "background:rgba(255,255,255,0.2);" : ""),
+        escaped_desc ? escaped_desc : "No description",
+        i18n_get(lang, "back_to_boards"),
+        i18n_get(lang, "threads"));
     
     free(escaped_name_title);
     free(escaped_name_h1);
@@ -602,42 +623,48 @@ http_response_t *board_view_handler(http_request_t *req) {
         db_finalize(stmt);
     }
     
-    len += snprintf(html + len, 32768 - len,
+    len += snprintf(html + len, 65536 - len,
         "</ul>\n"
         "<div class=\"card\" style=\"margin-top:24px;\">\n"
-        "<h2>✏️ Create New Thread</h2>\n"
+        "<h2>✏️ %s</h2>\n"
         "<form method=\"POST\" action=\"/thread\">\n"
         "<input type=\"hidden\" name=\"board_id\" value=\"%lld\">\n"
         "<div class=\"form-group\">\n"
-        "<label>Subject</label>\n"
+        "<label>%s</label>\n"
         "<input type=\"text\" name=\"subject\" required>\n"
         "</div>\n"
         "<div class=\"form-group\">\n"
-        "<label>Name</label>\n"
-        "<input type=\"text\" name=\"author\" placeholder=\"Anonymous\">\n"
+        "<label>%s</label>\n"
+        "<input type=\"text\" name=\"author\" placeholder=\"%s\">\n"
         "</div>\n"
         "<div class=\"form-group\">\n"
-        "<label>Content</label>\n"
+        "<label>%s</label>\n"
         "<textarea name=\"content\" required></textarea>\n"
         "</div>\n"
         "<div class=\"kaomoji-picker\">\n"
-        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">😊 颜文字</button>\n"
+        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">😊 %s</button>\n"
         "<div id=\"kaomoji-content\" class=\"kaomoji-content\">\n",
-        (long long)board_id);
+        i18n_get(lang, "create_new_thread"),
+        (long long)board_id,
+        i18n_get(lang, "subject"),
+        i18n_get(lang, "name"),
+        i18n_get(lang, "anonymous"),
+        i18n_get(lang, "content"),
+        i18n_get(lang, "kaomoji"));
     
-    for (int i = 0; i < kaomoji_categories_count && len < 32768 - 1024; i++) {
+    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
         char *escaped_title = render_escape_html(kaomoji_categories[i].title);
-        len += snprintf(html + len, 32768 - len,
+        len += snprintf(html + len, 65536 - len,
             "<div class=\"kaomoji-category\">\n"
             "<div class=\"kaomoji-title\">%s</div>\n"
             "<div class=\"kaomoji-items\">\n",
             escaped_title ? escaped_title : kaomoji_categories[i].title);
         free(escaped_title);
         
-        for (int j = 0; j < kaomoji_categories[i].count && len < 32768 - 512; j++) {
+        for (int j = 0; j < kaomoji_categories[i].count && len < 65536 - 512; j++) {
             char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
             char *escaped_html = render_escape_html(kaomoji_categories[i].items[j]);
-            len += snprintf(html + len, 32768 - len,
+            len += snprintf(html + len, 65536 - len,
                 "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
                 escaped_js ? escaped_js : kaomoji_categories[i].items[j],
                 escaped_html ? escaped_html : kaomoji_categories[i].items[j]);
@@ -645,20 +672,21 @@ http_response_t *board_view_handler(http_request_t *req) {
             free(escaped_html);
         }
         
-        len += snprintf(html + len, 32768 - len,
+        len += snprintf(html + len, 65536 - len,
             "</div>\n"
             "</div>\n");
     }
     
-    len += snprintf(html + len, 32768 - len,
+    len += snprintf(html + len, 65536 - len,
         "</div>\n"
         "</div>\n"
-        "<button type=\"submit\" class=\"btn\">Create Thread</button>\n"
+        "<button type=\"submit\" class=\"btn\">%s</button>\n"
         "</form>\n"
         "</div>\n"
         "</div>\n"
         "</body>\n"
-        "</html>");
+        "</html>",
+        i18n_get(lang, "create_thread"));
     
     board_free(board);
     http_response_t *response = http_response_create(200, "text/html", html, len);

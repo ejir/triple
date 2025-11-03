@@ -30,6 +30,19 @@ This update adds complete internationalization (i18n) support to the application
   - 导航元素
   - 表单标签（管理员模式）
   - 按钮文本
+  
+- ✅ **版块详情页** (Board Details Page) - `board_view_handler()`
+  - 页面标题和导航
+  - 语言切换器
+  - "主题列表" / "Threads" 标题
+  - 创建新主题表单
+    - "发表新主题" / "Create New Thread"
+    - "主题" / "Subject"
+    - "名称" / "Name"
+    - "内容" / "Content"
+    - "匿名" / "Anonymous" (placeholder)
+    - "颜文字" / "Kaomoji" 按钮
+  - 返回链接
 
 ### 4. 用户体验改进 (UX Improvements)
 
