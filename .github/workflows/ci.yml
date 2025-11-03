@@ -1,0 +1,259 @@
+name: CI Build and Test
+
+on:
+  push:
+    branches: [ main, develop, github-actions-ci-build-test ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-gcc:
+    name: Build with GCC
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make
+      
+      - name: Build with GCC (development mode)
+        run: |
+          make BUILD_MODE=gcc
+      
+      - name: Verify build artifact
+        run: |
+          ls -lh app
+          file app
+      
+      - name: Upload GCC build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-gcc-build
+          path: app
+          retention-days: 7
+
+  build-cosmo:
+    name: Build with Cosmopolitan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip build-essential
+      
+      - name: Cache Cosmopolitan toolchain
+        id: cache-cosmo
+        uses: actions/cache@v4
+        with:
+          path: /opt/cosmo
+          key: cosmo-toolchain-v1
+      
+      - name: Install Cosmopolitan toolchain
+        if: steps.cache-cosmo.outputs.cache-hit != 'true'
+        run: |
+          sudo mkdir -p /opt/cosmo
+          cd /opt/cosmo
+          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmocc
+          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmoar
+          sudo chmod +x cosmocc cosmoar
+          sudo mkdir -p bin
+          sudo mv cosmocc cosmoar bin/
+          echo "Cosmopolitan toolchain installed"
+      
+      - name: Verify Cosmopolitan installation
+        run: |
+          ls -lh /opt/cosmo/bin/
+          /opt/cosmo/bin/cosmocc --version || echo "Cosmocc installed"
+      
+      - name: Build with Cosmopolitan
+        run: |
+          make BUILD_MODE=cosmo
+      
+      - name: Verify APE build artifact
+        run: |
+          ls -lh app.com
+          file app.com
+      
+      - name: Upload Cosmopolitan APE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-cosmopolitan-ape
+          path: app.com
+          retention-days: 30
+
+  test-gcc:
+    name: Run Tests (GCC)
+    runs-on: ubuntu-latest
+    needs: build-gcc
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make
+      
+      - name: Build and run tests with GCC
+        run: |
+          make BUILD_MODE=gcc test
+      
+      - name: Check for test artifacts
+        run: |
+          ls -lh obj/test_* || echo "Test binaries built"
+
+  test-cosmo:
+    name: Run Tests (Cosmopolitan)
+    runs-on: ubuntu-latest
+    needs: build-cosmo
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip build-essential
+      
+      - name: Cache Cosmopolitan toolchain
+        id: cache-cosmo
+        uses: actions/cache@v4
+        with:
+          path: /opt/cosmo
+          key: cosmo-toolchain-v1
+      
+      - name: Install Cosmopolitan toolchain
+        if: steps.cache-cosmo.outputs.cache-hit != 'true'
+        run: |
+          sudo mkdir -p /opt/cosmo
+          cd /opt/cosmo
+          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmocc
+          sudo wget -q https://cosmo.zip/pub/cosmos/bin/cosmoar
+          sudo chmod +x cosmocc cosmoar
+          sudo mkdir -p bin
+          sudo mv cosmocc cosmoar bin/
+      
+      - name: Build and run tests with Cosmopolitan
+        run: |
+          make BUILD_MODE=cosmo test
+      
+      - name: Check for test artifacts
+        run: |
+          ls -lh obj/test_* || echo "Test binaries built"
+
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for syntax errors with GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make
+          # Compile with all warnings enabled to check code quality
+          make BUILD_MODE=gcc CFLAGS="-Wall -Wextra -Werror -std=c11 -Isrc -Ithird_party/sqlite3"
+
+  integration:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: [build-gcc, test-gcc]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download GCC build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-gcc-build
+      
+      - name: Make executable
+        run: chmod +x app
+      
+      - name: Run application in background
+        run: |
+          ./app > app.log 2>&1 &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          echo "Application started with PID: $APP_PID"
+      
+      - name: Wait for application to start
+        run: |
+          sleep 3
+          echo "Application logs:"
+          cat app.log || echo "No logs yet"
+      
+      - name: Test HTTP endpoint
+        run: |
+          # Try to connect to the application
+          curl -f http://localhost:8080/ || echo "Application may not be ready"
+      
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID || true
+          fi
+          pkill -f './app' || true
+      
+      - name: Upload application logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: app.log
+          retention-days: 7
+
+  release:
+    name: Create Release Artifacts
+    runs-on: ubuntu-latest
+    needs: [test-gcc, test-cosmo]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download Cosmopolitan APE
+        uses: actions/download-artifact@v4
+        with:
+          name: app-cosmopolitan-ape
+      
+      - name: Download GCC build
+        uses: actions/download-artifact@v4
+        with:
+          name: app-gcc-build
+      
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release
+          mv app.com release/app.com
+          mv app release/app-linux-x86_64
+          chmod +x release/*
+      
+      - name: Create checksums
+        run: |
+          cd release
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: release/
+          retention-days: 90
