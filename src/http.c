@@ -1,8 +1,10 @@
+#define _POSIX_C_SOURCE 200809L
 #include "http.h"
 #include "router.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int server_running = 0;
 static uint16_t server_port = 0;
@@ -13,13 +15,15 @@ int http_server_init(uint16_t port) {
     return 0;
 }
 
-void http_server_run(void) {
+void http_server_run(volatile int *keep_running) {
     server_running = 1;
     printf("HTTP server running on port %u (stub implementation)\n", server_port);
     printf("Press Ctrl+C to stop\n");
     
-    while (server_running) {
-        break;
+    while (*keep_running) {
+        // In a real implementation, this would handle HTTP requests
+        // For now, just sleep to avoid busy waiting
+        sleep(1);
     }
 }
 
