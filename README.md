@@ -11,6 +11,7 @@ A portable web application built with [Cosmopolitan Libc](https://github.com/jar
 - **Admin Interface**: Built-in administration panel
 - **File Uploads**: Support for file upload functionality
 - **Message Board**: Forum/imageboard-style functionality
+- **Internationalization**: Multi-language support (English, 简体中文) with easy language switching
 
 ## Directory Structure
 
@@ -24,10 +25,12 @@ A portable web application built with [Cosmopolitan Libc](https://github.com/jar
 │   ├── render.c/h         # HTML rendering and templating
 │   ├── admin.c/h          # Admin panel handlers
 │   ├── board.c/h          # Message board functionality
-│   └── upload.c/h         # File upload handling
+│   ├── upload.c/h         # File upload handling
+│   └── i18n.c/h           # Internationalization/localization
 ├── obj/                    # Compiled object files (generated)
 ├── Makefile               # Primary build system
 ├── build.sh               # Alternative build script
+├── LOCALIZATION.md        # Localization documentation
 └── README.md              # This file
 ```
 
@@ -184,6 +187,22 @@ File upload handling and storage.
 - `upload_handler()` - Handle file uploads
 - `upload_parse_multipart()` - Parse multipart form data
 - `upload_save_file()` - Save uploaded files
+
+### Internationalization Module (`i18n.c/h`)
+
+Multi-language support with translation management and language detection.
+
+**Key Functions:**
+- `i18n_get_language()` - Detect user's language preference (from URL, cookie, or default)
+- `i18n_get()` - Get translated text for a key
+- `i18n_get_lang_code()` - Get language code (e.g., "en", "zh-cn")
+- `i18n_get_lang_name()` - Get language display name
+
+**Supported Languages:**
+- English (`LANG_EN`)
+- Simplified Chinese (`LANG_ZH_CN`)
+
+For detailed localization documentation, see [LOCALIZATION.md](LOCALIZATION.md).
 
 ## Development
 

@@ -2,6 +2,7 @@
 #include "router.h"
 #include "render.h"
 #include "db.h"
+#include "i18n.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -278,32 +279,42 @@ http_response_t *admin_dashboard_handler(http_request_t *req) {
 }
 
 http_response_t *admin_login_handler(http_request_t *req) {
+    language_t lang = i18n_get_language(req);
+    
     if (strcmp(req->method, "GET") == 0) {
         if (admin_is_authenticated(req)) {
-            const char *html = 
+            char html[512];
+            snprintf(html, sizeof(html),
                 "<!DOCTYPE html>\n"
                 "<html>\n"
                 "<head>\n"
                 "<meta http-equiv=\"refresh\" content=\"0; url=/admin\">\n"
                 "</head>\n"
                 "<body>\n"
-                "<p>Already logged in. Redirecting...</p>\n"
+                "<p>%s</p>\n"
                 "</body>\n"
-                "</html>";
+                "</html>",
+                i18n_get(lang, "already_logged_in"));
             return http_response_create(200, "text/html", html, strlen(html));
         }
         
-        const char *html = 
+        char *html = malloc(4096);
+        if (!html) {
+            const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
+            return http_response_create(500, "text/html", err, strlen(err));
+        }
+        
+        int len = snprintf(html, 4096,
             "<!DOCTYPE html>\n"
             "<html>\n"
             "<head>\n"
             "<meta charset=\"UTF-8\">\n"
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-            "<title>Admin Login</title>\n"
+            "<title>%s</title>\n"
             "<style>\n"
             ":root{--primary:#1976d2;--primary-dark:#1565c0;}\n"
             "*{box-sizing:border-box;margin:0;padding:0;}\n"
-            "body{font-family:'Roboto','Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%%,#764ba2 100%%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}\n"
+            "body{font-family:'Roboto','Segoe UI',Arial,sans-serif,'Microsoft YaHei','SimHei';background:linear-gradient(135deg,#667eea 0%%,#764ba2 100%%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}\n"
             ".login-card{background:#fff;max-width:400px;width:100%%;padding:40px;border-radius:8px;box-shadow:0 8px 16px rgba(0,0,0,0.2);}\n"
             "h1{color:var(--primary);font-size:2rem;font-weight:500;margin-bottom:24px;text-align:center;}\n"
             ".form-group{margin-bottom:20px;}\n"
@@ -317,29 +328,55 @@ http_response_t *admin_login_handler(http_request_t *req) {
             ".link a{color:var(--primary);text-decoration:none;}\n"
             ".link a:hover{text-decoration:underline;}\n"
             ".note{text-align:center;margin-top:16px;color:rgba(0,0,0,0.54);font-size:0.875rem;}\n"
+            ".lang-switch{text-align:center;margin-bottom:16px;}\n"
+            ".lang-switch a{color:var(--primary);text-decoration:none;padding:6px 12px;border:1px solid var(--primary);border-radius:4px;margin:0 4px;transition:all 0.2s;display:inline-block;}\n"
+            ".lang-switch a:hover{background:var(--primary);color:#fff;}\n"
+            ".lang-switch a.active{background:var(--primary);color:#fff;}\n"
             "@media(max-width:480px){.login-card{padding:24px;}h1{font-size:1.5rem;}}\n"
             "</style>\n"
+            "<script>\n"
+            "function setLanguage(lang) {\n"
+            "  document.cookie = 'lang=' + lang + '; path=/; max-age=31536000';\n"
+            "  window.location.href = '/admin/login?lang=' + lang;\n"
+            "}\n"
+            "</script>\n"
             "</head>\n"
             "<body>\n"
             "<div class=\"login-card\">\n"
-            "<h1>🔐 Admin Login</h1>\n"
+            "<div class=\"lang-switch\">\n"
+            "<a href=\"#\" onclick=\"setLanguage('en'); return false;\" class=\"%s\">English</a>\n"
+            "<a href=\"#\" onclick=\"setLanguage('zh-cn'); return false;\" class=\"%s\">中文</a>\n"
+            "</div>\n"
+            "<h1>🔐 %s</h1>\n"
             "<form method=\"POST\" action=\"/admin/login\">\n"
             "<div class=\"form-group\">\n"
-            "<label for=\"username\">Username</label>\n"
+            "<label for=\"username\">%s</label>\n"
             "<input type=\"text\" id=\"username\" name=\"username\" required>\n"
             "</div>\n"
             "<div class=\"form-group\">\n"
-            "<label for=\"password\">Password</label>\n"
+            "<label for=\"password\">%s</label>\n"
             "<input type=\"password\" id=\"password\" name=\"password\" required>\n"
             "</div>\n"
-            "<button type=\"submit\" class=\"btn\">Login</button>\n"
+            "<button type=\"submit\" class=\"btn\">%s</button>\n"
             "</form>\n"
-            "<div class=\"link\"><a href=\"/\">← Back to Site</a></div>\n"
-            "<div class=\"note\">Default credentials: admin / admin</div>\n"
+            "<div class=\"link\"><a href=\"/\">← %s</a></div>\n"
+            "<div class=\"note\">%s</div>\n"
             "</div>\n"
             "</body>\n"
-            "</html>";
-        return http_response_create(200, "text/html", html, strlen(html));
+            "</html>",
+            i18n_get(lang, "admin_login"),
+            (lang == LANG_EN ? "active" : ""),
+            (lang == LANG_ZH_CN ? "active" : ""),
+            i18n_get(lang, "admin_login"),
+            i18n_get(lang, "username"),
+            i18n_get(lang, "password"),
+            i18n_get(lang, "login"),
+            i18n_get(lang, "back_to_site"),
+            i18n_get(lang, "default_credentials"));
+        
+        http_response_t *response = http_response_create(200, "text/html", html, len);
+        free(html);
+        return response;
     } else if (strcmp(req->method, "POST") == 0) {
         if (!req->body) {
             const char *html = "<html><body><h1>Bad Request</h1></body></html>";
