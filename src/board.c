@@ -9,6 +9,72 @@
 #include <time.h>
 #include <ctype.h>
 
+typedef struct {
+    const char *title;
+    const char **items;
+    int count;
+} kaomoji_category_t;
+
+static const char *kaomoji_common[] = {
+    "(ﾟ∀。)"
+};
+
+static const char *kaomoji_hide[] = {
+    "|∀ﾟ", "|∀`)", "|д`)", "|дﾟ)", "|ω・´)", "|ー`)", "|-`)"
+};
+
+static const char *kaomoji_fist[] = {
+    "⊂彡☆))д´)", "⊂彡☆))д`)", "⊂彡☆))∀`)", "(´∀((☆ミつ"
+};
+
+static const char *kaomoji_a[] = {
+    "(ﾟ∀。)", "(*ﾟ∀ﾟ*)", "(ﾟ∀ﾟ)", "(ノﾟ∀ﾟ)ノ", "(σﾟ∀ﾟ)σ",
+    "σ`∀´)", "(*´∀`)", "(´∀`)", "(ゝ∀･)", "(・∀・)",
+    "(｡◕∀◕｡)", "(〃∀〃)"
+};
+
+static const char *kaomoji_d[] = {
+    "(ﾟдﾟ)", "(´ﾟДﾟ`)", "(|||ﾟдﾟ)", "Σ(ﾟдﾟ)", "(((ﾟдﾟ)))",
+    "(ﾟДﾟ≡ﾟДﾟ)", "(д)ﾟﾟ", "(☉д⊙)", "(;ﾟдﾟ)", "(σﾟдﾟ)σ",
+    "(╬ﾟдﾟ)", "(`д´)", "(つд⊂)", "(>д<)", "(TдT)",
+    "(-д-)", "(´д`)", "(*´д`)", "(;´Д`)", "･ﾟ(ﾉд`ﾟ)",
+    "ﾟ(つд`ﾟ)"
+};
+
+static const char *kaomoji_w[] = {
+    "(=ﾟωﾟ)=", "(ﾟωﾟ)", "(oﾟωﾟo)", "(*´ω`*)", "ヾ(´ωﾟ｀)",
+    "( ^ω^)", "(・ω・)", "(｀･ω･)", "(`・ω・´)", "(´・ω・`)",
+    "(´・ω)", "(｀・ω)", "（<ゝω・）☆"
+};
+
+static const char *kaomoji_dash[] = {
+    "(・_ゝ・)", "(´_ゝ`)", "(´_っ`)", "(`_っ´)", "(´ー`)",
+    "(`ー´)", "(*ﾟーﾟ)", "(・ー・)"
+};
+
+static const char *kaomoji_e[] = {
+    "(ﾟ3ﾟ)", "(`ε´)", "ヾ(´ε`ヾ)", "(`ε´(つ*⊂)"
+};
+
+static const char *kaomoji_other[] = {
+    "(＾o＾)ﾉ", "(`ヮ´)", "(´ρ`)", "(`・´)", "(*ﾟ∇ﾟ)",
+    "ﾟÅﾟ)", "/(◕‿‿◕)\\"
+};
+
+static const kaomoji_category_t kaomoji_categories[] = {
+    {"常用", kaomoji_common, sizeof(kaomoji_common) / sizeof(kaomoji_common[0])},
+    {"躲", kaomoji_hide, sizeof(kaomoji_hide) / sizeof(kaomoji_hide[0])},
+    {"拳", kaomoji_fist, sizeof(kaomoji_fist) / sizeof(kaomoji_fist[0])},
+    {"∀", kaomoji_a, sizeof(kaomoji_a) / sizeof(kaomoji_a[0])},
+    {"д", kaomoji_d, sizeof(kaomoji_d) / sizeof(kaomoji_d[0])},
+    {"ω", kaomoji_w, sizeof(kaomoji_w) / sizeof(kaomoji_w[0])},
+    {"ー", kaomoji_dash, sizeof(kaomoji_dash) / sizeof(kaomoji_dash[0])},
+    {"ε", kaomoji_e, sizeof(kaomoji_e) / sizeof(kaomoji_e[0])},
+    {"其他", kaomoji_other, sizeof(kaomoji_other) / sizeof(kaomoji_other[0])}
+};
+
+static const int kaomoji_categories_count = sizeof(kaomoji_categories) / sizeof(kaomoji_categories[0]);
+
 static int hex_to_int(char c) {
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'A' && c <= 'F') return c - 'A' + 10;
@@ -211,19 +277,46 @@ http_response_t *board_view_handler(http_request_t *req) {
         return http_response_create(404, "text/html", html, strlen(html));
     }
     
-    char *html = malloc(16384);
+    char *html = malloc(32768);
     if (!html) {
         board_free(board);
         const char *err = "<html><body><h1>Error: Out of memory</h1></body></html>";
         return http_response_create(500, "text/html", err, strlen(err));
     }
     
-    int len = snprintf(html, 16384,
+    int len = snprintf(html, 32768,
         "<!DOCTYPE html>\n"
         "<html>\n"
         "<head>\n"
         "<meta charset=\"UTF-8\">\n"
         "<title>%s</title>\n"
+        "<style>\n"
+        ".kaomoji-picker { border:1px solid #ddd; padding:10px; margin:10px 0; background:#f9f9f9; border-radius:5px; }\n"
+        ".kaomoji-toggle { background:#2196F3; color:white; border:none; padding:6px 12px; cursor:pointer; border-radius:3px; margin-bottom:10px; }\n"
+        ".kaomoji-toggle:hover { background:#0b7dda; }\n"
+        ".kaomoji-content { display:none; }\n"
+        ".kaomoji-content.show { display:block; }\n"
+        ".kaomoji-category { margin:10px 0; }\n"
+        ".kaomoji-title { font-weight:bold; margin-bottom:5px; color:#333; }\n"
+        ".kaomoji-items { display:flex; flex-wrap:wrap; gap:5px; }\n"
+        ".kaomoji-item { padding:4px 8px; border:1px solid #ccc; background:white; cursor:pointer; border-radius:3px; font-size:14px; }\n"
+        ".kaomoji-item:hover { background:#e3f2fd; border-color:#2196F3; }\n"
+        "</style>\n"
+        "<script>\n"
+        "function toggleKaomoji() {\n"
+        "  var content = document.getElementById('kaomoji-content');\n"
+        "  content.classList.toggle('show');\n"
+        "}\n"
+        "function insertKaomoji(kaomoji) {\n"
+        "  var textarea = document.querySelector('textarea[name=\"content\"]');\n"
+        "  var start = textarea.selectionStart;\n"
+        "  var end = textarea.selectionEnd;\n"
+        "  var text = textarea.value;\n"
+        "  textarea.value = text.substring(0, start) + kaomoji + text.substring(end);\n"
+        "  textarea.selectionStart = textarea.selectionEnd = start + kaomoji.length;\n"
+        "  textarea.focus();\n"
+        "}\n"
+        "</script>\n"
         "</head>\n"
         "<body>\n"
         "<h1>/%s/ - %s</h1>\n"
@@ -252,7 +345,7 @@ http_response_t *board_view_handler(http_request_t *req) {
             const char *subject = (const char *)sqlite3_column_text(stmt, 1);
             int post_count = sqlite3_column_int(stmt, 2);
             
-            len += snprintf(html + len, 16384 - len,
+            len += snprintf(html + len, 32768 - len,
                 "<li><a href=\"/thread?id=%lld\">%s</a> (%d posts)</li>\n",
                 (long long)thread_id,
                 subject ? subject : "No Subject",
@@ -261,7 +354,7 @@ http_response_t *board_view_handler(http_request_t *req) {
         db_finalize(stmt);
     }
     
-    len += snprintf(html + len, 16384 - len,
+    len += snprintf(html + len, 32768 - len,
         "</ul>\n"
         "<hr>\n"
         "<h2>Create New Thread</h2>\n"
@@ -270,11 +363,37 @@ http_response_t *board_view_handler(http_request_t *req) {
         "Subject: <input type=\"text\" name=\"subject\" required><br>\n"
         "Name: <input type=\"text\" name=\"author\" placeholder=\"Anonymous\"><br>\n"
         "Content: <textarea name=\"content\" required></textarea><br>\n"
+        "<div class=\"kaomoji-picker\">\n"
+        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">颜文字 ◠‿◠</button>\n"
+        "<div id=\"kaomoji-content\" class=\"kaomoji-content\">\n",
+        (long long)board_id);
+    
+    for (int i = 0; i < kaomoji_categories_count && len < 32768 - 1024; i++) {
+        len += snprintf(html + len, 32768 - len,
+            "<div class=\"kaomoji-category\">\n"
+            "<div class=\"kaomoji-title\">%s</div>\n"
+            "<div class=\"kaomoji-items\">\n",
+            kaomoji_categories[i].title);
+        
+        for (int j = 0; j < kaomoji_categories[i].count && len < 32768 - 512; j++) {
+            len += snprintf(html + len, 32768 - len,
+                "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
+                kaomoji_categories[i].items[j],
+                kaomoji_categories[i].items[j]);
+        }
+        
+        len += snprintf(html + len, 32768 - len,
+            "</div>\n"
+            "</div>\n");
+    }
+    
+    len += snprintf(html + len, 32768 - len,
+        "</div>\n"
+        "</div>\n"
         "<button type=\"submit\">Create Thread</button>\n"
         "</form>\n"
         "</body>\n"
-        "</html>",
-        (long long)board_id);
+        "</html>");
     
     board_free(board);
     http_response_t *response = http_response_create(200, "text/html", html, len);
@@ -316,6 +435,16 @@ http_response_t *thread_view_handler(http_request_t *req) {
         ".quote-ref:hover { color:#0052a3; }\n"
         ".quoted-post { display:none; background:#f5f5f5; border-left:3px solid #0066cc; padding:8px; margin:8px 0; font-size:0.9em; }\n"
         ".quoted-post.expanded { display:block; }\n"
+        ".kaomoji-picker { border:1px solid #ddd; padding:10px; margin:10px 0; background:#f9f9f9; border-radius:5px; }\n"
+        ".kaomoji-toggle { background:#2196F3; color:white; border:none; padding:6px 12px; cursor:pointer; border-radius:3px; margin-bottom:10px; }\n"
+        ".kaomoji-toggle:hover { background:#0b7dda; }\n"
+        ".kaomoji-content { display:none; }\n"
+        ".kaomoji-content.show { display:block; }\n"
+        ".kaomoji-category { margin:10px 0; }\n"
+        ".kaomoji-title { font-weight:bold; margin-bottom:5px; color:#333; }\n"
+        ".kaomoji-items { display:flex; flex-wrap:wrap; gap:5px; }\n"
+        ".kaomoji-item { padding:4px 8px; border:1px solid #ccc; background:white; cursor:pointer; border-radius:3px; font-size:14px; }\n"
+        ".kaomoji-item:hover { background:#e3f2fd; border-color:#2196F3; }\n"
         "</style>\n"
         "<script>\n"
         "function replyToPost(postId) {\n"
@@ -328,6 +457,19 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "  if (quote) {\n"
         "    quote.classList.toggle('expanded');\n"
         "  }\n"
+        "}\n"
+        "function toggleKaomoji() {\n"
+        "  var content = document.getElementById('kaomoji-content');\n"
+        "  content.classList.toggle('show');\n"
+        "}\n"
+        "function insertKaomoji(kaomoji) {\n"
+        "  var textarea = document.getElementById('content');\n"
+        "  var start = textarea.selectionStart;\n"
+        "  var end = textarea.selectionEnd;\n"
+        "  var text = textarea.value;\n"
+        "  textarea.value = text.substring(0, start) + kaomoji + text.substring(end);\n"
+        "  textarea.selectionStart = textarea.selectionEnd = start + kaomoji.length;\n"
+        "  textarea.focus();\n"
         "}\n"
         "</script>\n"
         "</head>\n"
@@ -413,11 +555,37 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "<input type=\"hidden\" id=\"reply_to\" name=\"reply_to\" value=\"\">\n"
         "Name: <input type=\"text\" name=\"author\" placeholder=\"Anonymous\"><br>\n"
         "Content: <textarea id=\"content\" name=\"content\" required></textarea><br>\n"
+        "<div class=\"kaomoji-picker\">\n"
+        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">颜文字 ◠‿◠</button>\n"
+        "<div id=\"kaomoji-content\" class=\"kaomoji-content\">\n",
+        (long long)thread_id);
+    
+    for (int i = 0; i < kaomoji_categories_count && len < 32768 - 1024; i++) {
+        len += snprintf(html + len, 32768 - len,
+            "<div class=\"kaomoji-category\">\n"
+            "<div class=\"kaomoji-title\">%s</div>\n"
+            "<div class=\"kaomoji-items\">\n",
+            kaomoji_categories[i].title);
+        
+        for (int j = 0; j < kaomoji_categories[i].count && len < 32768 - 512; j++) {
+            len += snprintf(html + len, 32768 - len,
+                "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
+                kaomoji_categories[i].items[j],
+                kaomoji_categories[i].items[j]);
+        }
+        
+        len += snprintf(html + len, 32768 - len,
+            "</div>\n"
+            "</div>\n");
+    }
+    
+    len += snprintf(html + len, 32768 - len,
+        "</div>\n"
+        "</div>\n"
         "<button type=\"submit\">Post Reply</button>\n"
         "</form>\n"
         "</body>\n"
-        "</html>",
-        (long long)thread_id);
+        "</html>");
     
     thread_free(thread);
     http_response_t *response = http_response_create(200, "text/html", html, len);
