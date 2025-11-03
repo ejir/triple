@@ -43,9 +43,10 @@ You need the Cosmopolitan toolchain installed on your system.
 # Download and extract to /opt/cosmo
 sudo mkdir -p /opt/cosmo
 cd /opt/cosmo
-sudo wget https://cosmo.zip/pub/cosmos/bin/superconfigure
-sudo chmod +x superconfigure
-sudo ./superconfigure
+sudo wget https://cosmo.zip/pub/cosmocc/cosmocc.zip
+sudo unzip cosmocc.zip
+sudo rm cosmocc.zip
+sudo chmod +x bin/cosmocc bin/cosmoar
 ```
 
 **Option 2: Build from source**

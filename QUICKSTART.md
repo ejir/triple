@@ -41,11 +41,10 @@ To build an Actually Portable Executable that runs on Linux, Windows, macOS, and
 # Quick install
 sudo mkdir -p /opt/cosmo
 cd /opt/cosmo
-sudo wget https://cosmo.zip/pub/cosmos/bin/cosmocc
-sudo wget https://cosmo.zip/pub/cosmos/bin/cosmoar
-sudo chmod +x cosmocc cosmoar
-sudo mkdir -p bin
-sudo mv cosmocc cosmoar bin/
+sudo wget https://cosmo.zip/pub/cosmocc/cosmocc.zip
+sudo unzip cosmocc.zip
+sudo rm cosmocc.zip
+sudo chmod +x bin/cosmocc bin/cosmoar
 ```
 
 For detailed installation instructions, see [INSTALL.md](INSTALL.md).

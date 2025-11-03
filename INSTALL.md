@@ -39,33 +39,29 @@ sudo mkdir -p /opt/cosmo
 cd /opt/cosmo
 
 # Download the latest release
-sudo wget https://cosmo.zip/pub/cosmos/bin/cosmocc
-sudo wget https://cosmo.zip/pub/cosmos/bin/cosmoar
+sudo wget https://cosmo.zip/pub/cosmocc/cosmocc.zip
+sudo unzip cosmocc.zip
+sudo rm cosmocc.zip
 
 # Make them executable
-sudo chmod +x cosmocc cosmoar
-
-# Create bin directory and move binaries
-sudo mkdir -p bin
-sudo mv cosmocc cosmoar bin/
+sudo chmod +x bin/cosmocc bin/cosmoar
 
 # Add to PATH (optional)
 echo 'export PATH="/opt/cosmo/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-### Method 2: Using the Cosmopolitan Superconfiguration
+### Method 2: Using a specific version
 
 ```bash
 sudo mkdir -p /opt/cosmo
 cd /opt/cosmo
 
-# Download superconfigure script
-sudo wget https://cosmo.zip/pub/cosmos/bin/superconfigure
-sudo chmod +x superconfigure
-
-# Run the installer (downloads and sets up the toolchain)
-sudo ./superconfigure
+# Download a specific version (e.g., 4.0.2)
+sudo wget https://cosmo.zip/pub/cosmocc/cosmocc-4.0.2.zip
+sudo unzip cosmocc-4.0.2.zip
+sudo rm cosmocc-4.0.2.zip
+sudo chmod +x bin/cosmocc bin/cosmoar
 
 # Verify installation
 /opt/cosmo/bin/cosmocc --version
@@ -96,13 +92,13 @@ If you prefer to install elsewhere:
 mkdir -p ~/local/cosmo
 cd ~/local/cosmo
 
-# Download binaries
-wget https://cosmo.zip/pub/cosmos/bin/cosmocc
-wget https://cosmo.zip/pub/cosmos/bin/cosmoar
-chmod +x cosmocc cosmoar
+# Download and extract binaries
+wget https://cosmo.zip/pub/cosmocc/cosmocc.zip
+unzip cosmocc.zip
+rm cosmocc.zip
 
-mkdir -p bin
-mv cosmocc cosmoar bin/
+# Make them executable
+chmod +x bin/cosmocc bin/cosmoar
 
 # Set COSMO_DIR when building
 export COSMO_DIR=~/local/cosmo
@@ -227,10 +223,11 @@ chmod +x app.com
 
 ### Problem: Download failures
 
-**Solution 1**: Try alternative mirror:
+**Solution 1**: Try using curl instead of wget:
 ```bash
-# Use curl instead of wget
-curl -O https://cosmo.zip/pub/cosmos/bin/cosmocc
+# Use curl to download
+curl -O https://cosmo.zip/pub/cosmocc/cosmocc.zip
+unzip cosmocc.zip
 ```
 
 **Solution 2**: Build from source (see Method 3 above)
@@ -239,9 +236,13 @@ curl -O https://cosmo.zip/pub/cosmos/bin/cosmocc
 
 **Solution**: Ensure you have a complete Cosmopolitan installation:
 ```bash
-# Reinstall using superconfigure
+# Reinstall from the official zip
 cd /opt/cosmo
-sudo ./superconfigure
+sudo rm -rf *
+sudo wget https://cosmo.zip/pub/cosmocc/cosmocc.zip
+sudo unzip cosmocc.zip
+sudo rm cosmocc.zip
+sudo chmod +x bin/cosmocc bin/cosmoar
 ```
 
 ### Problem: "No such file or directory" on Windows
