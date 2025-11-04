@@ -8,10 +8,12 @@ A portable web application built with [Cosmopolitan Libc](https://github.com/jar
 - **Embedded SQLite**: Static database with no external dependencies
 - **Modular Architecture**: Clean separation of concerns with dedicated modules
 - **HTTP Server**: Standalone web server with routing capabilities
-- **Admin Interface**: Built-in administration panel
+- **Admin Interface**: Built-in administration panel with session management
 - **File Uploads**: Support for file upload functionality
-- **Message Board**: Forum/imageboard-style functionality
+- **Message Board**: Forum/imageboard-style functionality with threads and posts
 - **Internationalization**: Multi-language support (English, 简体中文) with easy language switching
+- **Material Design UI**: Modern, responsive interface following Material Design principles
+- **Kaomoji Picker**: Built-in Japanese emoticon picker for enhanced messaging
 
 ## Directory Structure
 
@@ -24,14 +26,24 @@ A portable web application built with [Cosmopolitan Libc](https://github.com/jar
 │   ├── db.c/h             # Database abstraction layer (SQLite)
 │   ├── render.c/h         # HTML rendering and templating
 │   ├── admin.c/h          # Admin panel handlers
+│   ├── auth.c/h           # Authentication and session management
 │   ├── board.c/h          # Message board functionality
+│   ├── thread.h           # Thread handlers (placeholder)
+│   ├── post.h             # Post handlers (placeholder)
 │   ├── upload.c/h         # File upload handling
-│   └── i18n.c/h           # Internationalization/localization
-├── obj/                    # Compiled object files (generated)
-├── Makefile               # Primary build system
-├── build.sh               # Alternative build script
-├── LOCALIZATION.md        # Localization documentation
-└── README.md              # This file
+│   ├── i18n.c/h           # Internationalization/localization
+│   ├── kaomoji.c/h        # Kaomoji emoticon data and picker
+│   ├── utils.c/h          # Common utility functions
+│   └── html_template.c/h  # HTML template helpers and common CSS
+├── third_party/           # Third-party libraries
+│   └── sqlite3/           # SQLite3 amalgamation
+├── tests/                 # Test suite
+├── obj/                   # Compiled object files (generated)
+├── Makefile              # Primary build system
+├── build.sh              # Alternative build script
+├── LOCALIZATION.md       # Localization documentation
+├── REFACTORING_SUMMARY.md # Code refactoring details
+└── README.md             # This file
 ```
 
 ## Prerequisites
@@ -178,6 +190,17 @@ Administrative interface for managing the application.
 - `admin_dashboard_handler()` - Admin control panel
 - `admin_login_handler()` - Authentication
 - `admin_logout_handler()` - Session termination
+- `admin_board_create_handler()` - Create new boards
+- `admin_board_delete_handler()` - Delete boards
+
+### Auth Module (`auth.c/h`)
+
+Centralized authentication and session management.
+
+**Key Functions:**
+- `auth_is_authenticated()` - Check if user has valid session
+- `auth_create_session()` - Create new session token
+- `auth_destroy_session()` - Invalidate session
 
 ### Upload Module (`upload.c/h`)
 
@@ -203,6 +226,35 @@ Multi-language support with translation management and language detection.
 - Simplified Chinese (`LANG_ZH_CN`)
 
 For detailed localization documentation, see [LOCALIZATION.md](LOCALIZATION.md).
+
+### Kaomoji Module (`kaomoji.c/h`)
+
+Japanese emoticon (kaomoji) data and picker functionality.
+
+**Key Functions:**
+- `kaomoji_get_categories()` - Get all emoticon categories
+- `kaomoji_get_categories_count()` - Get category count
+
+**Categories:**
+- Happy, Excited, Love, Sad, Angry, Confused, Surprised, Cute, Animals, Actions, Objects, Symbols
+
+### Utils Module (`utils.c/h`)
+
+Common utility functions used across the application.
+
+**Key Functions:**
+- `url_decode()` - URL decoding for query strings
+- `get_cookie_value()` - Parse cookie values from headers
+- `generate_random_token()` - Generate secure random tokens
+
+### HTML Template Module (`html_template.c/h`)
+
+Common HTML rendering functions and shared CSS.
+
+**Key Functions:**
+- `html_get_common_css()` - Returns Material Design CSS
+- `html_render_header()` - Renders HTML document header
+- `html_render_footer()` - Renders HTML document footer
 
 ## Development
 
@@ -342,6 +394,28 @@ Client → HTTP Server → Router → Handler → Database
 Client ← HTTP Server ← Router ← Response ← Render
 ```
 
+## Documentation
+
+📚 **See [DOCS_INDEX.md](DOCS_INDEX.md) for a complete documentation guide**
+
+### Core Documentation
+- [README.md](README.md) - This file (project overview)
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design
+- [INSTALL.md](INSTALL.md) - Installation and build instructions
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+
+### Feature Documentation
+- [LOCALIZATION.md](LOCALIZATION.md) - Internationalization/localization guide
+- [UI_FEATURES.md](UI_FEATURES.md) - Material Design UI and Kaomoji picker
+- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database schema and queries
+- [API.md](API.md) - HTTP endpoints and API reference
+
+### Development History
+- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
+- [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Code refactoring details
+- [BUGFIX_SUMMARY.md](BUGFIX_SUMMARY.md) - Database stability fixes
+- [BUGFIX_THREAD_CRASH.md](BUGFIX_THREAD_CRASH.md) - Thread view crash fix
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -350,3 +424,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Cosmopolitan Libc](https://github.com/jart/cosmopolitan) by Justine Tunney
 - [SQLite](https://www.sqlite.org/) for the embedded database
+- [Material Design](https://material.io/) for UI/UX principles

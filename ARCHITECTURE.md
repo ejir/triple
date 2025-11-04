@@ -41,24 +41,24 @@ The application is designed as a modular, portable web server with database capa
                     │
                     │ Dispatches to
                     ↓
-    ┌───────────────┴───────────────┬──────────────┐
-    │                               │              │
-    ↓                               ↓              ↓
-┌──────────┐              ┌──────────────┐  ┌──────────┐
-│ Board    │              │    Admin     │  │  Upload  │
-│ (board.c)│              │  (admin.c)   │  │(upload.c)│
-│- Threads │              │- Dashboard   │  │- Files   │
-│- Posts   │              │- Auth        │  │- Storage │
-└─────┬────┘              └──────┬───────┘  └─────┬────┘
-      │                          │                 │
-      │ Uses                     │ Uses            │ Uses
-      ↓                          ↓                 ↓
-┌──────────────────────────────────────────────────────────┐
-│                    Database (db.c)                       │
-│              - SQLite connection management              │
-│              - Query execution                           │
-│              - Migrations                                │
-└─────────────────────────┬────────────────────────────────┘
+    ┌───────────────┴───────────────┬──────────────┬──────────────┐
+    │                               │              │              │
+    ↓                               ↓              ↓              ↓
+┌──────────┐              ┌──────────────┐  ┌──────────┐  ┌──────────┐
+│ Board    │              │    Admin     │  │  Upload  │  │   Auth   │
+│ (board.c)│              │  (admin.c)   │  │(upload.c)│  │ (auth.c) │
+│- Threads │              │- Dashboard   │  │- Files   │  │- Sessions│
+│- Posts   │              │- Management  │  │- Storage │  │- Tokens  │
+└─────┬────┘              └──────┬───────┘  └─────┬────┘  └─────┬────┘
+      │                          │                 │             │
+      │ Uses                     │ Uses            │ Uses        │ Uses
+      ↓                          ↓                 ↓             ↓
+┌──────────────────────────────────────────────────────────────────┐
+│                    Database (db.c)                               │
+│              - SQLite connection management                      │
+│              - Query execution & prepared statements             │
+│              - Migrations & WAL mode                             │
+└─────────────────────────┬────────────────────────────────────────┘
                           │
                           ↓
                     ┌───────────┐
@@ -66,14 +66,23 @@ The application is designed as a modular, portable web server with database capa
                     │ Database  │
                     └───────────┘
 
-                    ┌──────────────┐
-          ┌─────────┤   Render     │
-          │         │  (render.c)  │
-          │         │- Templating  │
-          │         │- HTML gen    │
-          │         └──────────────┘
-          │
-          └─── Used by all handlers for output
+    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+    │   Render     │  │ HTML Template│  │     i18n     │  │   Kaomoji    │
+    │  (render.c)  │  │(html_templ.c)│  │   (i18n.c)   │  │ (kaomoji.c)  │
+    │- Templating  │  │- Common CSS  │  │- Translations│  │- Emoticons   │
+    │- HTML escape │  │- Headers     │  │- Languages   │  │- Categories  │
+    └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+           │                 │                 │                 │
+           └─────────────────┴─────────────────┴─────────────────┘
+                                     │
+                          Used by all handlers
+                                     │
+                          ┌──────────┴──────────┐
+                          │   Utils (utils.c)   │
+                          │  - URL decode       │
+                          │  - Cookie parsing   │
+                          │  - Token generation │
+                          └─────────────────────┘
 ```
 
 ## Module Descriptions
@@ -287,16 +296,106 @@ typedef struct {
 - `upload_parse_multipart()` - Parse multipart/form-data
 - `upload_save_file()` - Save file to disk
 - `upload_file_free()` - Clean up file structure
+- `upload_init()` - Initialize upload directory
 
 **Routes**:
 - `POST /upload` - File upload endpoint
 
-**Features** (to implement):
+**Features**:
 - Multipart form data parsing
-- File type validation
-- Size limits
+- Auto-create upload directory
 - Secure file storage
-- Virus scanning (optional)
+
+### i18n.c/h - Internationalization Module
+
+**Responsibility**: Multi-language support and translation management
+
+**Key Types**:
+```c
+typedef enum {
+    LANG_EN,
+    LANG_ZH_CN
+} language_t;
+```
+
+**Key Functions**:
+- `i18n_get_language()` - Detect user's preferred language
+- `i18n_get()` - Get translated text for a key
+- `i18n_get_lang_code()` - Get language code string
+- `i18n_get_lang_name()` - Get language display name
+
+**Features**:
+- URL parameter detection (`?lang=en`)
+- Cookie-based preference (1 year expiry)
+- English and Simplified Chinese support
+- Easy language switcher UI
+
+### auth.c/h - Authentication Module
+
+**Responsibility**: Session management and authentication
+
+**Key Functions**:
+- `auth_is_authenticated()` - Check if user has valid session
+- `auth_create_session()` - Create new session token
+- `auth_destroy_session()` - Invalidate session
+
+**Features**:
+- Session token management
+- Database-backed sessions
+- Reusable across modules
+- Secure random token generation
+
+### utils.c/h - Utility Module
+
+**Responsibility**: Common utility functions
+
+**Key Functions**:
+- `url_decode()` - Decode URL-encoded strings
+- `get_cookie_value()` - Parse cookie headers
+- `generate_random_token()` - Generate secure random tokens
+
+**Features**:
+- Reusable utility functions
+- URL decoding with safety checks
+- Cookie parsing for HTTP headers
+
+### kaomoji.c/h - Kaomoji Module
+
+**Responsibility**: Japanese emoticon data and management
+
+**Key Structures**:
+```c
+typedef struct {
+    const char *name;
+    const char **items;
+    int count;
+} kaomoji_category_t;
+```
+
+**Key Functions**:
+- `kaomoji_get_categories()` - Get all emoticon categories
+- `kaomoji_get_categories_count()` - Get category count
+
+**Features**:
+- 12 emoticon categories
+- 100+ kaomoji emoticons
+- Easy integration with message forms
+- Picker UI support
+
+### html_template.c/h - HTML Template Module
+
+**Responsibility**: Common HTML rendering and CSS
+
+**Key Functions**:
+- `html_get_common_css()` - Returns Material Design CSS
+- `html_render_header()` - Renders HTML document header
+- `html_render_footer()` - Renders HTML document footer
+
+**Features**:
+- Material Design color scheme
+- Responsive breakpoints
+- Common CSS in one place
+- Reduces HTML duplication
 
 ## Data Flow
 

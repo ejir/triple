@@ -61,21 +61,26 @@ This refactoring improves code maintainability and reusability by extracting com
 
 #### admin.c
 **Before**: 738 lines
-**After**: ~633 lines
+**After**: 632 lines (648 with header)
 **Changes**:
 - Removed authentication logic (moved to auth.c)
 - Removed utility functions (moved to utils.c)
 - Now includes: auth.h, utils.h
 - Uses `auth_is_authenticated()`, `auth_create_session()`, `auth_destroy_session()`
+- Added internationalization support
+- Material Design UI integration
 
 #### board.c
 **Before**: 1497 lines
-**After**: ~1409 lines
+**After**: 1414 lines (1460 with header)
 **Changes**:
 - Removed kaomoji data (moved to kaomoji.c)
 - Removed URL decode function (moved to utils.c)
-- Now includes: kaomoji.h, utils.h
+- Now includes: kaomoji.h, utils.h, i18n.h
 - Uses `kaomoji_get_categories()`, `kaomoji_get_categories_count()`
+- Comprehensive internationalization support
+- Material Design UI with responsive breakpoints
+- Kaomoji picker integration in forms
 
 ## Benefits
 
@@ -108,19 +113,23 @@ This refactoring improves code maintainability and reusability by extracting com
 
 ```
 src/
-├── admin.c/h         (~633 lines) - Admin UI handlers
-├── auth.c/h          (~69 lines)  - Authentication & sessions
-├── board.c/h         (~1409 lines)- Board & thread handlers
-├── db.c/h            (~205 lines) - Database operations
-├── html_template.c/h (~180 lines) - HTML templates & CSS
-├── http.c/h          (~357 lines) - HTTP server
-├── i18n.c/h          (~185 lines) - Internationalization
-├── kaomoji.c/h       (~150 lines) - Kaomoji emoticons
-├── main.c            (~76 lines)  - Application entry point
-├── render.c/h        (~125 lines) - HTML rendering utilities
-├── router.c/h        (~45 lines)  - URL routing
-├── upload.c/h        (~150 lines) - File upload handling
-└── utils.c/h         (~86 lines)  - Common utility functions
+├── admin.c/h         (632 + 16 = 648 lines) - Admin UI handlers
+├── auth.c/h          (67 + 10 = 77 lines)   - Authentication & sessions
+├── board.c/h         (1414 + 46 = 1460 lines) - Board & thread handlers
+├── db.c/h            (205 + 19 = 224 lines) - Database operations
+├── html_template.c/h (164 + 13 = 177 lines) - HTML templates & CSS
+├── http.c/h          (357 + 32 = 389 lines) - HTTP server
+├── i18n.c/h          (185 + 22 = 207 lines) - Internationalization
+├── kaomoji.c/h       (135 + 14 = 149 lines) - Kaomoji emoticons
+├── main.c            (76 lines)              - Application entry point
+├── render.c/h        (125 + 18 = 143 lines) - HTML rendering utilities
+├── router.c/h        (45 + 19 = 64 lines)   - URL routing
+├── upload.c/h        (150 + 23 = 173 lines) - File upload handling
+├── utils.c/h         (82 + 10 = 92 lines)   - Common utility functions
+├── thread.h          (10 lines)              - Thread handlers (placeholder)
+└── post.h            (9 lines)               - Post handlers (placeholder)
+
+Total: 3,898 lines across 27 files
 ```
 
 ## Future Improvements

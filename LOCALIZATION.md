@@ -97,28 +97,32 @@ The current version determines language by priority:
 ## 未来改进 (Future Improvements)
 
 - [ ] 从HTTP Accept-Language头自动检测浏览器语言
-- [ ] 添加更多语言支持（日语、韩语等）
-- [ ] 管理界面的完整中文化
+- [ ] 添加更多语言支持（日语、韩语、繁体中文等）
 - [ ] 用户配置文件中的语言设置
+- [ ] 导出/导入翻译文件（JSON/YAML格式）
+- [ ] 翻译覆盖率统计工具
 
 - [ ] Auto-detect browser language from HTTP Accept-Language header
-- [ ] Add more language support (Japanese, Korean, etc.)
-- [ ] Full localization of admin interface
+- [ ] Add more language support (Japanese, Korean, Traditional Chinese, etc.)
 - [ ] Language setting in user profiles
+- [ ] Export/import translation files (JSON/YAML format)
+- [ ] Translation coverage statistics tool
 
 ## 已本地化页面 (Localized Pages)
 
 目前已完成本地化的页面：
 - ✅ 首页/版块列表 (Home/Board List)
 - ✅ 版块详情页 (Board Details) - 包括表单、导航和标题
-- ⏳ 主题详情页 (Thread Details) - 待完成
-- ⏳ 管理面板 (Admin Panel) - 待完成
+- ✅ 主题详情页 (Thread Details) - 包括回复表单、导航和Kaomoji选择器
+- ✅ 管理面板 (Admin Panel) - 包括登录、仪表板和管理功能
+- ✅ Kaomoji选择器 (Kaomoji Picker) - 所有分类标签
 
 Currently localized pages:
 - ✅ Home/Board List
 - ✅ Board Details - Including forms, navigation and headers
-- ⏳ Thread Details - To be done
-- ⏳ Admin Panel - To be done
+- ✅ Thread Details - Including reply forms, navigation and kaomoji picker
+- ✅ Admin Panel - Including login, dashboard and management features
+- ✅ Kaomoji Picker - All category labels
 
 ## 字体支持 (Font Support)
 
