@@ -5,102 +5,13 @@
 #include "db.h"
 #include "admin.h"
 #include "i18n.h"
+#include "kaomoji.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
-
-typedef struct {
-    const char *title;
-    const char **items;
-    int count;
-} kaomoji_category_t;
-
-static const char *kaomoji_common[] = {
-    "(ﾟ∀。)"
-};
-
-static const char *kaomoji_hide[] = {
-    "|∀ﾟ", "|∀`)", "|д`)", "|дﾟ)", "|ω・´)", "|ー`)", "|-`)"
-};
-
-static const char *kaomoji_fist[] = {
-    "⊂彡☆))д´)", "⊂彡☆))д`)", "⊂彡☆))∀`)", "(´∀((☆ミつ"
-};
-
-static const char *kaomoji_a[] = {
-    "(ﾟ∀。)", "(*ﾟ∀ﾟ*)", "(ﾟ∀ﾟ)", "(ノﾟ∀ﾟ)ノ", "(σﾟ∀ﾟ)σ",
-    "σ`∀´)", "(*´∀`)", "(´∀`)", "(ゝ∀･)", "(・∀・)",
-    "(｡◕∀◕｡)", "(〃∀〃)"
-};
-
-static const char *kaomoji_d[] = {
-    "(ﾟдﾟ)", "(´ﾟДﾟ`)", "(|||ﾟдﾟ)", "Σ(ﾟдﾟ)", "(((ﾟдﾟ)))",
-    "(ﾟДﾟ≡ﾟДﾟ)", "(д)ﾟﾟ", "(☉д⊙)", "(;ﾟдﾟ)", "(σﾟдﾟ)σ",
-    "(╬ﾟдﾟ)", "(`д´)", "(つд⊂)", "(>д<)", "(TдT)",
-    "(-д-)", "(´д`)", "(*´д`)", "(;´Д`)", "･ﾟ(ﾉд`ﾟ)",
-    "ﾟ(つд`ﾟ)"
-};
-
-static const char *kaomoji_w[] = {
-    "(=ﾟωﾟ)=", "(ﾟωﾟ)", "(oﾟωﾟo)", "(*´ω`*)", "ヾ(´ωﾟ｀)",
-    "( ^ω^)", "(・ω・)", "(｀･ω･)", "(`・ω・´)", "(´・ω・`)",
-    "(´・ω)", "(｀・ω)", "（<ゝω・）☆"
-};
-
-static const char *kaomoji_dash[] = {
-    "(・_ゝ・)", "(´_ゝ`)", "(´_っ`)", "(`_っ´)", "(´ー`)",
-    "(`ー´)", "(*ﾟーﾟ)", "(・ー・)"
-};
-
-static const char *kaomoji_e[] = {
-    "(ﾟ3ﾟ)", "(`ε´)", "ヾ(´ε`ヾ)", "(`ε´(つ*⊂)"
-};
-
-static const char *kaomoji_other[] = {
-    "(＾o＾)ﾉ", "(`ヮ´)", "(´ρ`)", "(`・´)", "(*ﾟ∇ﾟ)",
-    "ﾟÅﾟ)", "/(◕‿‿◕)\\"
-};
-
-static const kaomoji_category_t kaomoji_categories[] = {
-    {"常用", kaomoji_common, sizeof(kaomoji_common) / sizeof(kaomoji_common[0])},
-    {"躲", kaomoji_hide, sizeof(kaomoji_hide) / sizeof(kaomoji_hide[0])},
-    {"拳", kaomoji_fist, sizeof(kaomoji_fist) / sizeof(kaomoji_fist[0])},
-    {"∀", kaomoji_a, sizeof(kaomoji_a) / sizeof(kaomoji_a[0])},
-    {"д", kaomoji_d, sizeof(kaomoji_d) / sizeof(kaomoji_d[0])},
-    {"ω", kaomoji_w, sizeof(kaomoji_w) / sizeof(kaomoji_w[0])},
-    {"ー", kaomoji_dash, sizeof(kaomoji_dash) / sizeof(kaomoji_dash[0])},
-    {"ε", kaomoji_e, sizeof(kaomoji_e) / sizeof(kaomoji_e[0])},
-    {"其他", kaomoji_other, sizeof(kaomoji_other) / sizeof(kaomoji_other[0])}
-};
-
-static const int kaomoji_categories_count = sizeof(kaomoji_categories) / sizeof(kaomoji_categories[0]);
-
-static int hex_to_int(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    return 0;
-}
-
-static void url_decode(char *dst, const char *src, size_t dst_size) {
-    size_t i = 0, j = 0;
-    while (src[i] && j < dst_size - 1) {
-        if (src[i] == '%' && src[i+1] && src[i+2]) {
-            int high = hex_to_int(src[i+1]);
-            int low = hex_to_int(src[i+2]);
-            dst[j++] = (char)((high << 4) | low);
-            i += 3;
-        } else if (src[i] == '+') {
-            dst[j++] = ' ';
-            i++;
-        } else {
-            dst[j++] = src[i++];
-        }
-    }
-    dst[j] = '\0';
-}
 
 void board_init(void) {
     printf("Board module initialized\n");
@@ -708,31 +619,34 @@ http_response_t *board_view_handler(http_request_t *req) {
         i18n_get(lang, "create_thread"),
         i18n_get(lang, "kaomoji"));
     
-    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
-        char *escaped_title = render_escape_html(kaomoji_categories[i].title);
+    const kaomoji_category_t *categories = kaomoji_get_categories();
+    int categories_count = kaomoji_get_categories_count();
+    
+    for (int i = 0; i < categories_count && len < 65536 - 1024; i++) {
+        char *escaped_title = render_escape_html(categories[i].title);
         len += snprintf(html + len, 65536 - len,
             "<button class=\"kaomoji-tab%s\" onclick=\"switchTab(%d)\">%s</button>\n",
             (i == 0 ? " active" : ""),
             i,
-            escaped_title ? escaped_title : kaomoji_categories[i].title);
+            escaped_title ? escaped_title : categories[i].title);
         free(escaped_title);
     }
     
     len += snprintf(html + len, 65536 - len, "</div>\n<div class=\"kaomoji-content\">\n");
     
-    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
+    for (int i = 0; i < categories_count && len < 65536 - 1024; i++) {
         len += snprintf(html + len, 65536 - len,
             "<div class=\"kaomoji-category%s\">\n"
             "<div class=\"kaomoji-items\">\n",
             (i == 0 ? " active" : ""));
         
-        for (int j = 0; j < kaomoji_categories[i].count && len < 65536 - 512; j++) {
-            char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
-            char *escaped_html = render_escape_html(kaomoji_categories[i].items[j]);
+        for (int j = 0; j < categories[i].count && len < 65536 - 512; j++) {
+            char *escaped_js = render_escape_js(categories[i].items[j]);
+            char *escaped_html = render_escape_html(categories[i].items[j]);
             len += snprintf(html + len, 65536 - len,
                 "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
-                escaped_js ? escaped_js : kaomoji_categories[i].items[j],
-                escaped_html ? escaped_html : kaomoji_categories[i].items[j]);
+                escaped_js ? escaped_js : categories[i].items[j],
+                escaped_html ? escaped_html : categories[i].items[j]);
             free(escaped_js);
             free(escaped_html);
         }
@@ -1091,31 +1005,34 @@ http_response_t *thread_view_handler(http_request_t *req) {
         i18n_get(lang, "post_reply"),
         i18n_get(lang, "kaomoji"));
     
-    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
-        char *escaped_title = render_escape_html(kaomoji_categories[i].title);
+    const kaomoji_category_t *categories2 = kaomoji_get_categories();
+    int categories_count2 = kaomoji_get_categories_count();
+    
+    for (int i = 0; i < categories_count2 && len < 65536 - 1024; i++) {
+        char *escaped_title = render_escape_html(categories2[i].title);
         len += snprintf(html + len, 65536 - len,
             "<button class=\"kaomoji-tab%s\" onclick=\"switchTab(%d)\">%s</button>\n",
             (i == 0 ? " active" : ""),
             i,
-            escaped_title ? escaped_title : kaomoji_categories[i].title);
+            escaped_title ? escaped_title : categories2[i].title);
         free(escaped_title);
     }
     
     len += snprintf(html + len, 65536 - len, "</div>\n<div class=\"kaomoji-content\">\n");
     
-    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
+    for (int i = 0; i < categories_count2 && len < 65536 - 1024; i++) {
         len += snprintf(html + len, 65536 - len,
             "<div class=\"kaomoji-category%s\">\n"
             "<div class=\"kaomoji-items\">\n",
             (i == 0 ? " active" : ""));
         
-        for (int j = 0; j < kaomoji_categories[i].count && len < 65536 - 512; j++) {
-            char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
-            char *escaped_html = render_escape_html(kaomoji_categories[i].items[j]);
+        for (int j = 0; j < categories2[i].count && len < 65536 - 512; j++) {
+            char *escaped_js = render_escape_js(categories2[i].items[j]);
+            char *escaped_html = render_escape_html(categories2[i].items[j]);
             len += snprintf(html + len, 65536 - len,
                 "<span class=\"kaomoji-item\" onclick=\"insertKaomoji('%s')\">%s</span>\n",
-                escaped_js ? escaped_js : kaomoji_categories[i].items[j],
-                escaped_html ? escaped_html : kaomoji_categories[i].items[j]);
+                escaped_js ? escaped_js : categories2[i].items[j],
+                escaped_html ? escaped_html : categories2[i].items[j]);
             free(escaped_js);
             free(escaped_html);
         }
