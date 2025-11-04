@@ -525,26 +525,65 @@ http_response_t *board_view_handler(http_request_t *req) {
         "textarea { min-height: 120px; resize: vertical; }\n"
         "label { display: block; margin-bottom: 4px; font-weight: 500; color: var(--text-primary); }\n"
         ".form-group { margin-bottom: 16px; }\n"
-        ".kaomoji-picker { border: 1px solid var(--divider); padding: 16px; margin: 16px 0;\n"
-        "  background: var(--surface); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n"
-        ".kaomoji-toggle { background: var(--accent); color: white; border: none; padding: 8px 16px;\n"
-        "  cursor: pointer; border-radius: 4px; margin-bottom: 12px; font-weight: 500;\n"
-        "  transition: background 0.2s; }\n"
-        ".kaomoji-toggle:hover { background: #e91e63; }\n"
-        ".kaomoji-content { display: none; }\n"
-        ".kaomoji-content.show { display: block; }\n"
-        ".kaomoji-category { margin: 12px 0; }\n"
-        ".kaomoji-title { font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }\n"
+        ".kaomoji-btn { background: var(--accent); color: white; border: none; padding: 8px 16px;\n"
+        "  cursor: pointer; border-radius: 4px; font-weight: 500; transition: background 0.2s;\n"
+        "  font-size: 0.875rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\n"
+        ".kaomoji-btn:hover { background: #e91e63; box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\n"
+        ".kaomoji-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0;\n"
+        "  width: 100%%; height: 100%%; background: rgba(0,0,0,0.5); align-items: center;\n"
+        "  justify-content: center; }\n"
+        ".kaomoji-modal.show { display: flex; }\n"
+        ".kaomoji-popup { background: var(--surface); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);\n"
+        "  max-width: 600px; width: 90%%; max-height: 70vh; display: flex; flex-direction: column;\n"
+        "  position: relative; }\n"
+        ".kaomoji-header { display: flex; justify-content: space-between; align-items: center;\n"
+        "  padding: 16px 20px; border-bottom: 1px solid var(--divider); }\n"
+        ".kaomoji-title { font-size: 1.125rem; font-weight: 500; color: var(--text-primary); }\n"
+        ".kaomoji-close { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary);\n"
+        "  cursor: pointer; padding: 0; width: 32px; height: 32px; border-radius: 50%%;\n"
+        "  transition: all 0.2s; line-height: 1; }\n"
+        ".kaomoji-close:hover { background: rgba(0,0,0,0.05); color: var(--text-primary); }\n"
+        ".kaomoji-tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--divider);\n"
+        "  background: #f5f5f5; }\n"
+        ".kaomoji-tab { background: none; border: none; padding: 12px 20px; cursor: pointer;\n"
+        "  font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);\n"
+        "  transition: all 0.2s; white-space: nowrap; border-bottom: 2px solid transparent; }\n"
+        ".kaomoji-tab:hover { background: rgba(25,118,210,0.05); color: var(--primary); }\n"
+        ".kaomoji-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }\n"
+        ".kaomoji-content { flex: 1; overflow-y: auto; padding: 16px 20px; }\n"
+        ".kaomoji-category { display: none; }\n"
+        ".kaomoji-category.active { display: block; }\n"
         ".kaomoji-items { display: flex; flex-wrap: wrap; gap: 8px; }\n"
-        ".kaomoji-item { padding: 6px 12px; border: 1px solid var(--divider); background: white;\n"
-        "  cursor: pointer; border-radius: 4px; font-size: 14px; transition: all 0.2s; }\n"
+        ".kaomoji-item { padding: 8px 16px; border: 1px solid var(--divider); background: white;\n"
+        "  cursor: pointer; border-radius: 4px; font-size: 1rem; transition: all 0.2s;\n"
+        "  box-shadow: 0 1px 2px rgba(0,0,0,0.05); }\n"
         ".kaomoji-item:hover { background: #e3f2fd; border-color: var(--primary);\n"
-        "  box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n"
+        "  box-shadow: 0 2px 4px rgba(0,0,0,0.15); transform: translateY(-1px); }\n"
+        ".kaomoji-item:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }\n"
+        "@media (max-width: 768px) {\n"
+        "  .kaomoji-popup { width: 95%%; max-height: 80vh; }\n"
+        "  .kaomoji-tab { padding: 10px 12px; font-size: 0.8rem; }\n"
+        "  .kaomoji-item { padding: 6px 12px; font-size: 0.9rem; }\n"
+        "}\n"
         "</style>\n"
         "<script>\n"
-        "function toggleKaomoji() {\n"
-        "  var content = document.getElementById('kaomoji-content');\n"
-        "  content.classList.toggle('show');\n"
+        "var currentTab = 0;\n"
+        "function openKaomoji() {\n"
+        "  document.getElementById('kaomoji-modal').classList.add('show');\n"
+        "}\n"
+        "function closeKaomoji() {\n"
+        "  document.getElementById('kaomoji-modal').classList.remove('show');\n"
+        "}\n"
+        "function switchTab(index) {\n"
+        "  currentTab = index;\n"
+        "  var tabs = document.querySelectorAll('.kaomoji-tab');\n"
+        "  var categories = document.querySelectorAll('.kaomoji-category');\n"
+        "  tabs.forEach(function(tab, i) {\n"
+        "    if (i === index) { tab.classList.add('active'); } else { tab.classList.remove('active'); }\n"
+        "  });\n"
+        "  categories.forEach(function(cat, i) {\n"
+        "    if (i === index) { cat.classList.add('active'); } else { cat.classList.remove('active'); }\n"
+        "  });\n"
         "}\n"
         "function insertKaomoji(kaomoji) {\n"
         "  var textarea = document.querySelector('textarea[name=\"content\"]');\n"
@@ -554,6 +593,11 @@ http_response_t *board_view_handler(http_request_t *req) {
         "  textarea.value = text.substring(0, start) + kaomoji + text.substring(end);\n"
         "  textarea.selectionStart = textarea.selectionEnd = start + kaomoji.length;\n"
         "  textarea.focus();\n"
+        "  closeKaomoji();\n"
+        "}\n"
+        "window.onclick = function(event) {\n"
+        "  var modal = document.getElementById('kaomoji-modal');\n"
+        "  if (event.target === modal) { closeKaomoji(); }\n"
         "}\n"
         "function setLanguage(lang) {\n"
         "  document.cookie = 'lang=' + lang + '; path=/; max-age=31536000';\n"
@@ -641,25 +685,46 @@ http_response_t *board_view_handler(http_request_t *req) {
         "<label>%s</label>\n"
         "<textarea name=\"content\" required></textarea>\n"
         "</div>\n"
-        "<div class=\"kaomoji-picker\">\n"
-        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">😊 %s</button>\n"
-        "<div id=\"kaomoji-content\" class=\"kaomoji-content\">\n",
+        "<div style=\"margin-bottom:16px;\">\n"
+        "<button type=\"button\" class=\"kaomoji-btn\" onclick=\"openKaomoji()\">😊 %s</button>\n"
+        "</div>\n"
+        "<button type=\"submit\" class=\"btn\">%s</button>\n"
+        "</form>\n"
+        "</div>\n"
+        "<div id=\"kaomoji-modal\" class=\"kaomoji-modal\">\n"
+        "<div class=\"kaomoji-popup\">\n"
+        "<div class=\"kaomoji-header\">\n"
+        "<span class=\"kaomoji-title\">😊 %s</span>\n"
+        "<button class=\"kaomoji-close\" onclick=\"closeKaomoji()\">×</button>\n"
+        "</div>\n"
+        "<div class=\"kaomoji-tabs\">\n",
         i18n_get(lang, "create_new_thread"),
         (long long)board_id,
         i18n_get(lang, "subject"),
         i18n_get(lang, "name"),
         i18n_get(lang, "anonymous"),
         i18n_get(lang, "content"),
+        i18n_get(lang, "kaomoji"),
+        i18n_get(lang, "create_thread"),
         i18n_get(lang, "kaomoji"));
     
     for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
         char *escaped_title = render_escape_html(kaomoji_categories[i].title);
         len += snprintf(html + len, 65536 - len,
-            "<div class=\"kaomoji-category\">\n"
-            "<div class=\"kaomoji-title\">%s</div>\n"
-            "<div class=\"kaomoji-items\">\n",
+            "<button class=\"kaomoji-tab%s\" onclick=\"switchTab(%d)\">%s</button>\n",
+            (i == 0 ? " active" : ""),
+            i,
             escaped_title ? escaped_title : kaomoji_categories[i].title);
         free(escaped_title);
+    }
+    
+    len += snprintf(html + len, 65536 - len, "</div>\n<div class=\"kaomoji-content\">\n");
+    
+    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
+        len += snprintf(html + len, 65536 - len,
+            "<div class=\"kaomoji-category%s\">\n"
+            "<div class=\"kaomoji-items\">\n",
+            (i == 0 ? " active" : ""));
         
         for (int j = 0; j < kaomoji_categories[i].count && len < 65536 - 512; j++) {
             char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
@@ -680,13 +745,10 @@ http_response_t *board_view_handler(http_request_t *req) {
     len += snprintf(html + len, 65536 - len,
         "</div>\n"
         "</div>\n"
-        "<button type=\"submit\" class=\"btn\">%s</button>\n"
-        "</form>\n"
         "</div>\n"
         "</div>\n"
         "</body>\n"
-        "</html>",
-        i18n_get(lang, "create_thread"));
+        "</html>");
     
     board_free(board);
     http_response_t *response = http_response_create(200, "text/html", html, len);
@@ -792,23 +854,49 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "textarea { min-height: 120px; resize: vertical; }\n"
         "label { display: block; margin-bottom: 4px; font-weight: 500; color: var(--text-primary); }\n"
         ".form-group { margin-bottom: 16px; }\n"
-        ".kaomoji-picker { border: 1px solid var(--divider); padding: 16px; margin: 16px 0;\n"
-        "  background: var(--surface); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n"
-        ".kaomoji-toggle { background: var(--accent); color: white; border: none; padding: 8px 16px;\n"
-        "  cursor: pointer; border-radius: 4px; margin-bottom: 12px; font-weight: 500;\n"
-        "  transition: background 0.2s; }\n"
-        ".kaomoji-toggle:hover { background: #e91e63; }\n"
-        ".kaomoji-content { display: none; }\n"
-        ".kaomoji-content.show { display: block; }\n"
-        ".kaomoji-category { margin: 12px 0; }\n"
-        ".kaomoji-title { font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }\n"
+        ".kaomoji-btn { background: var(--accent); color: white; border: none; padding: 8px 16px;\n"
+        "  cursor: pointer; border-radius: 4px; font-weight: 500; transition: background 0.2s;\n"
+        "  font-size: 0.875rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }\n"
+        ".kaomoji-btn:hover { background: #e91e63; box-shadow: 0 3px 6px rgba(0,0,0,0.3); }\n"
+        ".kaomoji-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0;\n"
+        "  width: 100%%; height: 100%%; background: rgba(0,0,0,0.5); align-items: center;\n"
+        "  justify-content: center; }\n"
+        ".kaomoji-modal.show { display: flex; }\n"
+        ".kaomoji-popup { background: var(--surface); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);\n"
+        "  max-width: 600px; width: 90%%; max-height: 70vh; display: flex; flex-direction: column;\n"
+        "  position: relative; }\n"
+        ".kaomoji-header { display: flex; justify-content: space-between; align-items: center;\n"
+        "  padding: 16px 20px; border-bottom: 1px solid var(--divider); }\n"
+        ".kaomoji-title { font-size: 1.125rem; font-weight: 500; color: var(--text-primary); }\n"
+        ".kaomoji-close { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary);\n"
+        "  cursor: pointer; padding: 0; width: 32px; height: 32px; border-radius: 50%%;\n"
+        "  transition: all 0.2s; line-height: 1; }\n"
+        ".kaomoji-close:hover { background: rgba(0,0,0,0.05); color: var(--text-primary); }\n"
+        ".kaomoji-tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--divider);\n"
+        "  background: #f5f5f5; }\n"
+        ".kaomoji-tab { background: none; border: none; padding: 12px 20px; cursor: pointer;\n"
+        "  font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);\n"
+        "  transition: all 0.2s; white-space: nowrap; border-bottom: 2px solid transparent; }\n"
+        ".kaomoji-tab:hover { background: rgba(25,118,210,0.05); color: var(--primary); }\n"
+        ".kaomoji-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }\n"
+        ".kaomoji-content { flex: 1; overflow-y: auto; padding: 16px 20px; }\n"
+        ".kaomoji-category { display: none; }\n"
+        ".kaomoji-category.active { display: block; }\n"
         ".kaomoji-items { display: flex; flex-wrap: wrap; gap: 8px; }\n"
-        ".kaomoji-item { padding: 6px 12px; border: 1px solid var(--divider); background: white;\n"
-        "  cursor: pointer; border-radius: 4px; font-size: 14px; transition: all 0.2s; }\n"
+        ".kaomoji-item { padding: 8px 16px; border: 1px solid var(--divider); background: white;\n"
+        "  cursor: pointer; border-radius: 4px; font-size: 1rem; transition: all 0.2s;\n"
+        "  box-shadow: 0 1px 2px rgba(0,0,0,0.05); }\n"
         ".kaomoji-item:hover { background: #e3f2fd; border-color: var(--primary);\n"
-        "  box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n"
+        "  box-shadow: 0 2px 4px rgba(0,0,0,0.15); transform: translateY(-1px); }\n"
+        ".kaomoji-item:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }\n"
+        "@media (max-width: 768px) {\n"
+        "  .kaomoji-popup { width: 95%%; max-height: 80vh; }\n"
+        "  .kaomoji-tab { padding: 10px 12px; font-size: 0.8rem; }\n"
+        "  .kaomoji-item { padding: 6px 12px; font-size: 0.9rem; }\n"
+        "}\n"
         "</style>\n"
         "<script>\n"
+        "var currentTab = 0;\n"
         "function replyToPost(postId) {\n"
         "  document.getElementById('reply_to').value = postId;\n"
         "  document.getElementById('reply-form').scrollIntoView({behavior:'smooth'});\n"
@@ -820,9 +908,22 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "    quote.classList.toggle('expanded');\n"
         "  }\n"
         "}\n"
-        "function toggleKaomoji() {\n"
-        "  var content = document.getElementById('kaomoji-content');\n"
-        "  content.classList.toggle('show');\n"
+        "function openKaomoji() {\n"
+        "  document.getElementById('kaomoji-modal').classList.add('show');\n"
+        "}\n"
+        "function closeKaomoji() {\n"
+        "  document.getElementById('kaomoji-modal').classList.remove('show');\n"
+        "}\n"
+        "function switchTab(index) {\n"
+        "  currentTab = index;\n"
+        "  var tabs = document.querySelectorAll('.kaomoji-tab');\n"
+        "  var categories = document.querySelectorAll('.kaomoji-category');\n"
+        "  tabs.forEach(function(tab, i) {\n"
+        "    if (i === index) { tab.classList.add('active'); } else { tab.classList.remove('active'); }\n"
+        "  });\n"
+        "  categories.forEach(function(cat, i) {\n"
+        "    if (i === index) { cat.classList.add('active'); } else { cat.classList.remove('active'); }\n"
+        "  });\n"
         "}\n"
         "function insertKaomoji(kaomoji) {\n"
         "  var textarea = document.getElementById('content');\n"
@@ -832,6 +933,11 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "  textarea.value = text.substring(0, start) + kaomoji + text.substring(end);\n"
         "  textarea.selectionStart = textarea.selectionEnd = start + kaomoji.length;\n"
         "  textarea.focus();\n"
+        "  closeKaomoji();\n"
+        "}\n"
+        "window.onclick = function(event) {\n"
+        "  var modal = document.getElementById('kaomoji-modal');\n"
+        "  if (event.target === modal) { closeKaomoji(); }\n"
         "}\n"
         "function setLanguage(lang) {\n"
         "  document.cookie = 'lang=' + lang + '; path=/; max-age=31536000';\n"
@@ -963,24 +1069,45 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "<label>%s</label>\n"
         "<textarea id=\"content\" name=\"content\" required></textarea>\n"
         "</div>\n"
-        "<div class=\"kaomoji-picker\">\n"
-        "<button type=\"button\" class=\"kaomoji-toggle\" onclick=\"toggleKaomoji()\">😊 %s</button>\n"
-        "<div id=\"kaomoji-content\" class=\"kaomoji-content\">\n",
+        "<div style=\"margin-bottom:16px;\">\n"
+        "<button type=\"button\" class=\"kaomoji-btn\" onclick=\"openKaomoji()\">😊 %s</button>\n"
+        "</div>\n"
+        "<button type=\"submit\" class=\"btn\">%s</button>\n"
+        "</form>\n"
+        "</div>\n"
+        "<div id=\"kaomoji-modal\" class=\"kaomoji-modal\">\n"
+        "<div class=\"kaomoji-popup\">\n"
+        "<div class=\"kaomoji-header\">\n"
+        "<span class=\"kaomoji-title\">😊 %s</span>\n"
+        "<button class=\"kaomoji-close\" onclick=\"closeKaomoji()\">×</button>\n"
+        "</div>\n"
+        "<div class=\"kaomoji-tabs\">\n",
         i18n_get(lang, "reply"),
         (long long)thread_id,
         i18n_get(lang, "name"),
         i18n_get(lang, "anonymous"),
         i18n_get(lang, "content"),
+        i18n_get(lang, "kaomoji"),
+        i18n_get(lang, "post_reply"),
         i18n_get(lang, "kaomoji"));
     
     for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
         char *escaped_title = render_escape_html(kaomoji_categories[i].title);
         len += snprintf(html + len, 65536 - len,
-            "<div class=\"kaomoji-category\">\n"
-            "<div class=\"kaomoji-title\">%s</div>\n"
-            "<div class=\"kaomoji-items\">\n",
+            "<button class=\"kaomoji-tab%s\" onclick=\"switchTab(%d)\">%s</button>\n",
+            (i == 0 ? " active" : ""),
+            i,
             escaped_title ? escaped_title : kaomoji_categories[i].title);
         free(escaped_title);
+    }
+    
+    len += snprintf(html + len, 65536 - len, "</div>\n<div class=\"kaomoji-content\">\n");
+    
+    for (int i = 0; i < kaomoji_categories_count && len < 65536 - 1024; i++) {
+        len += snprintf(html + len, 65536 - len,
+            "<div class=\"kaomoji-category%s\">\n"
+            "<div class=\"kaomoji-items\">\n",
+            (i == 0 ? " active" : ""));
         
         for (int j = 0; j < kaomoji_categories[i].count && len < 65536 - 512; j++) {
             char *escaped_js = render_escape_js(kaomoji_categories[i].items[j]);
@@ -1001,13 +1128,10 @@ http_response_t *thread_view_handler(http_request_t *req) {
     len += snprintf(html + len, 65536 - len,
         "</div>\n"
         "</div>\n"
-        "<button type=\"submit\" class=\"btn\">%s</button>\n"
-        "</form>\n"
         "</div>\n"
         "</div>\n"
         "</body>\n"
-        "</html>",
-        i18n_get(lang, "post_reply"));
+        "</html>");
     
     thread_free(thread);
     http_response_t *response = http_response_create(200, "text/html", html, len);
