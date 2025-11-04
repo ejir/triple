@@ -4,19 +4,27 @@ Complete guide to all documentation in this project.
 
 ## Quick Start
 
-1. **New to the project?** Start with [README.md](README.md)
+1. **New to the project?** Start with [README.md](../README.md) or [README.zh-CN.md](../README.zh-CN.md)
 2. **Installing?** See [INSTALL.md](INSTALL.md)
 3. **Contributing?** Read [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Core Documentation
 
-### 📘 [README.md](README.md)
-**Main project documentation**
+### 📘 [README.md](../README.md)
+**Main project documentation (English)**
 - Project overview and features
 - Directory structure
 - Building and running
 - Module documentation
 - Development guidelines
+
+### 📘 [README.zh-CN.md](../README.zh-CN.md)
+**主要项目文档（简体中文）**
+- 项目概述和特性
+- 目录结构
+- 构建和运行
+- 模块文档
+- 开发指南
 
 ### 🏗️ [ARCHITECTURE.md](ARCHITECTURE.md)
 **System architecture and design**
@@ -113,7 +121,7 @@ Complete guide to all documentation in this project.
 ## Documentation by Role
 
 ### For New Users
-1. [README.md](README.md) - Understand what the project does
+1. [README.md](../README.md) or [README.zh-CN.md](../README.zh-CN.md) - Understand what the project does
 2. [INSTALL.md](INSTALL.md) - Get it running
 3. [LOCALIZATION.md](LOCALIZATION.md) - Switch to your language
 4. [UI_FEATURES.md](UI_FEATURES.md) - Learn about the interface
@@ -140,8 +148,8 @@ Complete guide to all documentation in this project.
 
 ### Installation & Setup
 - [INSTALL.md](INSTALL.md) - Complete installation guide
-- [README.md](README.md#prerequisites) - Prerequisites
-- [README.md](README.md#building) - Building instructions
+- [README.md](../README.md#prerequisites) - Prerequisites
+- [README.md](../README.md#building) - Building instructions
 
 ### Architecture & Design
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Full architecture documentation
@@ -155,7 +163,7 @@ Complete guide to all documentation in this project.
 
 ### Development
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution process
-- [README.md](README.md#development) - Development guidelines
+- [README.md](../README.md#development) - Development guidelines
 - [CHANGELOG.md](CHANGELOG.md) - What's changed
 
 ### Troubleshooting
@@ -168,8 +176,8 @@ Complete guide to all documentation in this project.
 
 ### Documentation Size
 ```
-Total: 11 markdown files
-Core:    4 files (README, ARCHITECTURE, INSTALL, CONTRIBUTING)
+Total: 12 markdown files
+Core:    5 files (README x2, ARCHITECTURE, INSTALL, CONTRIBUTING)
 Feature: 4 files (LOCALIZATION, UI_FEATURES, DATABASE_SCHEMA, API)
 History: 3 files (CHANGELOG, REFACTORING_SUMMARY, BUGFIX_*)
 ```
@@ -192,7 +200,7 @@ History: 3 files (CHANGELOG, REFACTORING_SUMMARY, BUGFIX_*)
 
 When adding features:
 1. Update [CHANGELOG.md](CHANGELOG.md) with the change
-2. Update [README.md](README.md) if it affects core functionality
+2. Update [README.md](../README.md) and [README.zh-CN.md](../README.zh-CN.md) if it affects core functionality
 3. Update [ARCHITECTURE.md](ARCHITECTURE.md) if it affects design
 4. Update feature-specific docs ([LOCALIZATION.md](LOCALIZATION.md), [UI_FEATURES.md](UI_FEATURES.md), etc.)
 5. Update [API.md](API.md) if it adds/changes endpoints
@@ -205,7 +213,7 @@ When fixing bugs:
 When refactoring:
 1. Document in [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)
 2. Update [ARCHITECTURE.md](ARCHITECTURE.md)
-3. Update [README.md](README.md) module documentation
+3. Update [README.md](../README.md) and [README.zh-CN.md](../README.zh-CN.md) module documentation
 
 ## Documentation Standards
 

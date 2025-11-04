@@ -339,7 +339,7 @@ make TARGET=myapp.com
 
 After successful installation:
 
-1. Read [README.md](README.md) for project documentation
+1. Read [README.md](../README.md) for project documentation
 2. Review [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines
 3. Start the server: `./app.com`
 4. Access the application at `http://localhost:8080`
@@ -349,7 +349,7 @@ After successful installation:
 - [Cosmopolitan Libc Documentation](https://justine.lol/cosmopolitan/)
 - [Cosmopolitan GitHub Repository](https://github.com/jart/cosmopolitan)
 - [Actually Portable Executable Format](https://justine.lol/ape.html)
-- [Project README](README.md)
+- [Project README](../README.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
 
 ## Getting Help

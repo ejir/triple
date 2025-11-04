@@ -457,4 +457,4 @@ db_exec(query);
 
 - [BUGFIX_SUMMARY.md](BUGFIX_SUMMARY.md) - Database stability fixes
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
-- [README.md](README.md) - General project information
+- [README.md](../README.md) - General project information
