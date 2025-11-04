@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 static char upload_directory[256] = "./uploads";
 
@@ -12,6 +14,17 @@ void upload_init(const char *upload_dir) {
         strncpy(upload_directory, upload_dir, sizeof(upload_directory) - 1);
         upload_directory[sizeof(upload_directory) - 1] = '\0';
     }
+    
+    struct stat st;
+    if (stat(upload_directory, &st) != 0) {
+        if (mkdir(upload_directory, 0755) != 0) {
+            fprintf(stderr, "Warning: Failed to create upload directory %s: %s\n", 
+                    upload_directory, strerror(errno));
+        } else {
+            printf("Created upload directory: %s\n", upload_directory);
+        }
+    }
+    
     printf("Upload module initialized, directory: %s\n", upload_directory);
 }
 

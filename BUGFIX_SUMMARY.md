@@ -1,88 +1,161 @@
-# Bug Fix Summary
+# Bug Fix Summary: ENOENT/Segfault and CI Release
 
-## Issues Fixed
+## Issue Description
 
-### 1. Create New Board Returns 404 Error
-**Problem:** The "Create New Board" form on the homepage was submitting to `/board/create` endpoint, but this route was not registered in the router, causing a 404 Not Found error.
+The application was experiencing segmentation faults with ENOENT errors during database operations:
 
-**Solution:**
-- Added `board_create_handler()` function to handle POST requests to `/board/create`
-- Registered the route in `board_register_routes()` 
-- The handler parses form data, validates input, and creates a new board in the database
-- Returns a success page with a link to view the newly created board
+```
+lseek(3, 20'480, SEEK_SET) → 20'480 ENOENT
+read(3, ..., 4'096) → 4'096 ENOENT
+fcntl(3, F_SETLK, {.l_type=F_UNLCK}) → 0 ENOENT
+mmap(...) → ENOENT
+Terminating on uncaught SIGSEGV
+```
 
-### 2. Chinese/UTF-8 Character Encoding Issue
-**Problem:** Chinese characters and other UTF-8 encoded text were being double-encoded and displayed incorrectly (e.g., showing as `%26%2326631%3B%26%2335760%3B` instead of the actual characters).
+## Root Cause
 
-**Solution:**
-- **Added URL decoding:** Created `url_decode()` and `hex_to_int()` helper functions to properly decode URL-encoded form data
-- **Updated all form handlers:** Modified `board_create_handler()`, `thread_create_handler()`, and `post_create_handler()` to use `url_decode()` when parsing form field values
-- **Added UTF-8 meta tags:** Added `<meta charset="UTF-8">` to all HTML page headers
-- **Added charset to HTTP headers:** Modified `send_response()` in `http.c` to automatically append `; charset=utf-8` to `text/html` Content-Type headers
+1. **Database file not found**: The database file or its directory didn't exist, causing ENOENT errors
+2. **Memory-mapped I/O issues**: SQLite's mmap feature caused segfaults when files were deleted or moved during operation
+3. **Missing directory creation**: Upload and database directories were not automatically created
 
-## Files Modified
+## Solutions Implemented
 
-### src/board.c
-- Added `hex_to_int()` helper function for URL decoding
-- Added `url_decode()` function to decode URL-encoded strings
-- Added `board_create_handler()` to handle board creation
-- Updated `board_register_routes()` to register the `/board/create` route
-- Modified `thread_create_handler()` to use `url_decode()` for form fields
-- Modified `post_create_handler()` to use `url_decode()` for form fields
-- Added UTF-8 meta charset tags to HTML output in `board_list_handler()`, `board_view_handler()`, and `thread_view_handler()`
+### 1. Database Module (`src/db.c`)
 
-### src/board.h
-- Added declaration for `board_create_handler()`
+#### Added Directory Creation
+- Implemented `ensure_directory_exists()` function to create database directory if needed
+- Validates directory path before database initialization
+- Handles `EEXIST` error gracefully
 
-### src/http.c
-- Modified `send_response()` to automatically add `charset=utf-8` to text/html Content-Type headers
+#### Disabled Memory-Mapped I/O
+```c
+PRAGMA mmap_size=0;
+```
+- Prevents segfaults caused by accessing deleted/moved files via mmap
+- Sacrifices some performance for stability
 
-## Technical Details
+#### Enabled WAL Mode
+```c
+PRAGMA journal_mode=WAL;
+```
+- Write-Ahead Logging for better concurrency
+- Reduces database lock contention
+- Allows readers and writers to operate concurrently
 
-### URL Decoding Algorithm
-The `url_decode()` function handles:
-- Percent-encoded characters (e.g., `%E4%B8%AD` → 中)
-- Plus signs as spaces (`+` → ` `)
-- Normal characters pass through unchanged
+#### Improved Synchronous Mode
+```c
+PRAGMA synchronous=NORMAL;
+```
+- Balances durability and performance
+- Provides good crash safety with better performance than FULL mode
 
-This ensures that UTF-8 multi-byte characters submitted via HTML forms are correctly decoded and stored in the database.
+#### Added Busy Timeout
+```c
+sqlite3_busy_timeout(db_conn, 5000);
+```
+- 5-second timeout for handling database locks
+- Prevents immediate failures on busy database
 
-### Character Set Support
-- All HTML pages now include `<meta charset="UTF-8">` in the head section
-- HTTP responses include `Content-Type: text/html; charset=utf-8` header
-- SQLite3 stores text as UTF-8 by default (no changes needed)
+### 2. Upload Module (`src/upload.c`)
+
+#### Auto-create Upload Directory
+- Check if upload directory exists on initialization
+- Create directory with permissions 0755 if it doesn't exist
+- Log warnings if creation fails without breaking the application
+
+### 3. CI/CD Enhancement (`.github/workflows/ci.yml`)
+
+#### Added GitHub Release Creation
+- Automatically creates releases when tags are pushed
+- Uses `softprops/action-gh-release@v1` action
+- Includes:
+  - Compiled binary (`app.com`)
+  - SHA256 checksums (`SHA256SUMS`)
+  - Auto-generated release notes from commits
+
+#### Release Trigger
+```yaml
+if: startsWith(github.ref, 'refs/tags/')
+```
+- Only triggers on tag push (e.g., `git tag v1.0.0 && git push origin v1.0.0`)
+
+## Benefits
+
+### Reliability
+- ✅ Eliminates ENOENT-related segfaults
+- ✅ Graceful handling of missing directories
+- ✅ Better error messages for debugging
+
+### Database Performance
+- ✅ WAL mode improves concurrency
+- ✅ Normal synchronous mode reduces I/O overhead
+- ✅ Busy timeout prevents lock conflicts
+
+### CI/CD
+- ✅ Automated release process
+- ✅ Consistent versioning with tags
+- ✅ Easy distribution of binaries
 
 ## Testing
 
-Both issues have been verified as fixed:
-
-1. **Board Creation:** 
-   - Endpoint `/board/create` returns 200 OK instead of 404
-   - Boards can be created successfully via the web form
-
-2. **UTF-8 Support:**
-   - Chinese characters display correctly in all fields (board name, title, description, thread subject, author, post content)
-   - Characters are properly encoded in database and rendered in HTML
-   - URL-encoded form data is correctly decoded
-
-### Example Test Commands
+### Verify Database Fixes
 ```bash
-# Test board creation with Chinese characters
-curl -X POST http://localhost:8080/board/create \
-  -d "name=测试板&title=测试一下&description=这是中文描述"
+# Build the application
+make clean && make BUILD_MODE=gcc
 
-# Test thread creation with Chinese characters
-curl -X POST http://localhost:8080/thread \
-  -d "board_id=1&subject=测试主题&author=张三&content=这是测试内容"
+# Run without creating directories first
+rm -rf app.db uploads
+./app.com
 
-# Test post creation with Chinese characters
-curl -X POST http://localhost:8080/post \
-  -d "thread_id=1&author=李四&content=我也来回复一下"
+# Should automatically create:
+# - Database file (app.db)
+# - Upload directory (./uploads)
 ```
 
-## Compatibility
+### Verify CI Release
+```bash
+# Create a new tag
+git tag v1.0.0
 
-- Changes are backward compatible
-- No database schema changes required
-- No breaking changes to existing functionality
-- Works with both Cosmopolitan and GCC builds
+# Push tag to trigger release
+git push origin v1.0.0
+
+# Check GitHub Releases page for new release with:
+# - app.com binary
+# - SHA256SUMS file
+# - Auto-generated release notes
+```
+
+## Migration Notes
+
+### For Existing Deployments
+1. No database migration required - changes are runtime only
+2. Existing database files will be upgraded with new PRAGMAs on next startup
+3. Upload directory will be created if missing
+
+### For Windows Users
+The path in the error trace showed Windows path (`C:/Users/...`). These fixes help with:
+- File system differences between Windows and Unix
+- Path handling inconsistencies
+- Directory creation across platforms
+
+## Future Improvements
+
+### Potential Enhancements
+1. Add configurable mmap size for better performance on stable file systems
+2. Implement database connection pooling for multi-threaded scenarios
+3. Add health check endpoint to monitor database status
+4. Implement automatic database backup before migrations
+
+### Performance Tuning
+If performance becomes an issue after disabling mmap:
+```c
+// Instead of disabling entirely, use a smaller size
+PRAGMA mmap_size=67108864;  // 64MB
+```
+
+## References
+
+- [SQLite Memory-Mapped I/O](https://www.sqlite.org/mmap.html)
+- [SQLite WAL Mode](https://www.sqlite.org/wal.html)
+- [GitHub Actions Release](https://github.com/softprops/action-gh-release)
