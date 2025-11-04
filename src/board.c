@@ -857,8 +857,8 @@ http_response_t *thread_view_handler(http_request_t *req) {
         "<div class=\"content\">%s</div>\n"
         "</div>\n"
         "<h2>💬 %s</h2>\n",
-        (long long)thread_id,
         escaped_subject_title ? escaped_subject_title : "Thread",
+        (long long)thread_id,
         escaped_subject_h1 ? escaped_subject_h1 : "Thread",
         (lang == LANG_EN ? "background:rgba(255,255,255,0.2);" : ""),
         (lang == LANG_ZH_CN ? "background:rgba(255,255,255,0.2);" : ""),
