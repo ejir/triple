@@ -4,8 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Internationalization (i18n)**
+  - Multi-language support (English, Simplified Chinese)
+  - Language detection from URL parameter, cookie, or default
+  - Language switcher UI in all pages
+  - Cookie-based language preference (1 year expiry)
+  - Comprehensive translation system with 50+ translation keys
+  
+- **Material Design UI**
+  - Complete UI redesign following Material Design principles
+  - Gradient headers with custom color schemes
+  - Card-based layouts with elevation effects
+  - Responsive design with mobile/desktop breakpoints
+  - Touch-friendly buttons (48px min-height)
+  - Common CSS module for consistent styling
+  
+- **Kaomoji Emoticon Picker**
+  - 12 categories with 100+ Japanese emoticons
+  - Interactive picker UI in message forms
+  - Categories: Happy, Excited, Love, Sad, Angry, Confused, Surprised, Cute, Animals, Actions, Objects, Symbols
+  - One-click insertion into text fields
+  
+- **Code Refactoring**
+  - Extracted `auth.c/h` for authentication and session management
+  - Extracted `utils.c/h` for common utility functions
+  - Extracted `kaomoji.c/h` for emoticon data
+  - Extracted `html_template.c/h` for HTML templates and common CSS
+  - Reduced code duplication and improved modularity
+  - Better separation of concerns
+
 ### Fixed
-- Database ENOENT/Segfault Issues
+- **Thread View SIGSEGV Crash**
+  - Fixed incorrect parameter order in `snprintf()` causing segmentation fault
+  - Thread pages now load correctly without crashes
+  - Added test suite to prevent regression
+  
+- **Database ENOENT/Segfault Issues**
   - Added directory existence checks before database initialization
   - Disabled SQLite memory-mapped I/O (`PRAGMA mmap_size=0`) to prevent SIGSEGV on file deletion
   - Enabled WAL mode (`PRAGMA journal_mode=WAL`) for better concurrency
@@ -14,10 +49,11 @@ All notable changes to this project will be documented in this file.
   - Auto-create upload directory if it doesn't exist
   
 ### Changed
-- CI/CD Enhancement
+- **CI/CD Enhancement**
   - Added automatic GitHub Release creation when new tags are pushed
   - Release includes compiled binary (`app.com`) and SHA256 checksums
   - Release notes are automatically generated from commits
+  - Fixed release permissions using `secrets.GITHUB_TOKEN`
 
 ### Added
 - SQLite3 integration (version 3.46.1)
