@@ -2,6 +2,8 @@
 
 A portable web application built with [Cosmopolitan Libc](https://github.com/jart/cosmopolitan) that compiles to an Actually Portable Executable (APE) - a single binary that runs natively on Linux, Windows, MacOS, FreeBSD, OpenBSD, and NetBSD.
 
+English | [简体中文](README.zh-CN.md)
+
 ## Features
 
 - **Actually Portable**: Single binary runs on multiple operating systems
@@ -39,10 +41,9 @@ A portable web application built with [Cosmopolitan Libc](https://github.com/jar
 │   └── sqlite3/           # SQLite3 amalgamation
 ├── tests/                 # Test suite
 ├── obj/                   # Compiled object files (generated)
+├── doc/                   # Documentation directory
 ├── Makefile              # Primary build system
 ├── build.sh              # Alternative build script
-├── LOCALIZATION.md       # Localization documentation
-├── REFACTORING_SUMMARY.md # Code refactoring details
 └── README.md             # This file
 ```
 
@@ -225,7 +226,7 @@ Multi-language support with translation management and language detection.
 - English (`LANG_EN`)
 - Simplified Chinese (`LANG_ZH_CN`)
 
-For detailed localization documentation, see [LOCALIZATION.md](LOCALIZATION.md).
+For detailed localization documentation, see [doc/LOCALIZATION.md](doc/LOCALIZATION.md).
 
 ### Kaomoji Module (`kaomoji.c/h`)
 
@@ -396,25 +397,26 @@ Client ← HTTP Server ← Router ← Response ← Render
 
 ## Documentation
 
-📚 **See [DOCS_INDEX.md](DOCS_INDEX.md) for a complete documentation guide**
+📚 **See [doc/DOCS_INDEX.md](doc/DOCS_INDEX.md) for a complete documentation guide**
 
 ### Core Documentation
 - [README.md](README.md) - This file (project overview)
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design
-- [INSTALL.md](INSTALL.md) - Installation and build instructions
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [README.zh-CN.md](README.zh-CN.md) - Chinese version of README
+- [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md) - System architecture and design
+- [doc/INSTALL.md](doc/INSTALL.md) - Installation and build instructions
+- [doc/CONTRIBUTING.md](doc/CONTRIBUTING.md) - Contribution guidelines
 
 ### Feature Documentation
-- [LOCALIZATION.md](LOCALIZATION.md) - Internationalization/localization guide
-- [UI_FEATURES.md](UI_FEATURES.md) - Material Design UI and Kaomoji picker
-- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database schema and queries
-- [API.md](API.md) - HTTP endpoints and API reference
+- [doc/LOCALIZATION.md](doc/LOCALIZATION.md) - Internationalization/localization guide
+- [doc/UI_FEATURES.md](doc/UI_FEATURES.md) - Material Design UI and Kaomoji picker
+- [doc/DATABASE_SCHEMA.md](doc/DATABASE_SCHEMA.md) - Database schema and queries
+- [doc/API.md](doc/API.md) - HTTP endpoints and API reference
 
 ### Development History
-- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
-- [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Code refactoring details
-- [BUGFIX_SUMMARY.md](BUGFIX_SUMMARY.md) - Database stability fixes
-- [BUGFIX_THREAD_CRASH.md](BUGFIX_THREAD_CRASH.md) - Thread view crash fix
+- [doc/CHANGELOG.md](doc/CHANGELOG.md) - Version history and changes
+- [doc/REFACTORING_SUMMARY.md](doc/REFACTORING_SUMMARY.md) - Code refactoring details
+- [doc/BUGFIX_SUMMARY.md](doc/BUGFIX_SUMMARY.md) - Database stability fixes
+- [doc/BUGFIX_THREAD_CRASH.md](doc/BUGFIX_THREAD_CRASH.md) - Thread view crash fix
 
 ## License
 

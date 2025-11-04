@@ -301,7 +301,7 @@ Coverage:      100% of features documented
 ## Usage Guide
 
 ### For New Users
-1. Start with [README.md](README.md)
+1. Start with [README.md](../README.md)
 2. Follow [INSTALL.md](INSTALL.md) to get running
 3. Check [LOCALIZATION.md](LOCALIZATION.md) for language options
 4. Review [UI_FEATURES.md](UI_FEATURES.md) for UI guidance
@@ -331,7 +331,7 @@ Coverage:      100% of features documented
 
 **When adding features:**
 1. Update [CHANGELOG.md](CHANGELOG.md)
-2. Update [README.md](README.md) if core feature
+2. Update [README.md](../README.md) if core feature
 3. Update relevant feature doc ([LOCALIZATION.md](LOCALIZATION.md), [UI_FEATURES.md](UI_FEATURES.md), etc.)
 4. Update [API.md](API.md) if adding endpoints
 5. Update [DOCS_INDEX.md](DOCS_INDEX.md) if adding new doc
@@ -344,7 +344,7 @@ Coverage:      100% of features documented
 **When refactoring:**
 1. Update [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)
 2. Update [ARCHITECTURE.md](ARCHITECTURE.md)
-3. Update [README.md](README.md) module docs
+3. Update [README.md](../README.md) module docs
 
 ## Conclusion
 

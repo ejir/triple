@@ -332,4 +332,4 @@ All text meets WCAG AA standards:
 - [LOCALIZATION.md](LOCALIZATION.md) - Internationalization details
 - [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) - Code organization
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
-- [README.md](README.md) - General project information
+- [README.md](../README.md) - General project information

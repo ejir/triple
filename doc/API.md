@@ -649,7 +649,7 @@ Currently not configured. All requests must be same-origin.
 
 ## Related Documentation
 
-- [README.md](README.md) - Project overview
+- [README.md](../README.md) - Project overview
 - [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database structure
 - [LOCALIZATION.md](LOCALIZATION.md) - Language support
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System design
